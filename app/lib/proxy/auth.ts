@@ -49,7 +49,7 @@ export default async function Auth(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const authRoutes = ["/login", "signup"];
+  const authRoutes = ["/login", "/signup"];
   if (authRoutes.includes(pathname) && user) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
