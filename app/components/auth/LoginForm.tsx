@@ -105,7 +105,7 @@ export default function LoginForm() {
           className="w-full py-3 rounded-lg font-semibold transition
                      bg-gray-700 hover:bg-gray-600 text-white"
         >
-          Sign Up with GitHub
+          Sign In with GitHub
         </button>
       </form>
 
