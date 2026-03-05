@@ -19,6 +19,10 @@ export default function AuthPage() {
     setShowCaptcha(true);
   };
 
+  const handleOAuthSignUp = async () => {
+    await supabase.auth.signInWithOAuth({ provider: "github" });
+  };
+
   const handleCaptchaVerify = async (token: string) => {
     setShowCaptcha(false);
     setLoading(true);
@@ -48,6 +52,9 @@ export default function AuthPage() {
         render() {
           if (captcha.current) captcha.current.resetCaptcha();
           setLoading(false);
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
           return "Signed up successfully! Check your email to confirm your account.";
         },
       },
@@ -71,6 +78,7 @@ export default function AuthPage() {
           className="w-full p-3 rounded-xl bg-black/40 border border-gray-700
                    focus:outline-none focus:ring-2 focus:ring-indigo-500
                    transition mb-4"
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
@@ -81,6 +89,7 @@ export default function AuthPage() {
           className="w-full p-3 rounded-xl bg-black/40 border border-gray-700
                    focus:outline-none focus:ring-2 focus:ring-indigo-500
                    transition mb-4"
+          value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
@@ -91,6 +100,7 @@ export default function AuthPage() {
           className="w-full p-3 rounded-xl bg-black/40 border border-gray-700
                    focus:outline-none focus:ring-2 focus:ring-indigo-500
                    transition mb-4"
+          value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
@@ -105,6 +115,15 @@ export default function AuthPage() {
          }`}
         >
           Sign Up
+        </button>
+
+        <button
+          type="button"
+          onClick={handleOAuthSignUp}
+          className="w-full py-3 rounded-lg font-semibold transition
+                     bg-gray-700 hover:bg-gray-600 text-white"
+        >
+          Sign Up with GitHub
         </button>
       </form>
 

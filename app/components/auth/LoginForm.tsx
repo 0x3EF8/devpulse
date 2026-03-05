@@ -20,6 +20,10 @@ export default function LoginForm() {
     setShowCaptcha(true);
   };
 
+  const handleOAuthSignIn = async () => {
+    await supabase.auth.signInWithOAuth({ provider: "github" });
+  };
+
   const handleCaptchaVerify = async (token: string) => {
     setShowCaptcha(false);
     setLoading(true);
@@ -93,6 +97,15 @@ export default function LoginForm() {
          }`}
         >
           Login
+        </button>
+
+        <button
+          type="button"
+          onClick={handleOAuthSignIn}
+          className="w-full py-3 rounded-lg font-semibold transition
+                     bg-gray-700 hover:bg-gray-600 text-white"
+        >
+          Sign Up with GitHub
         </button>
       </form>
 
