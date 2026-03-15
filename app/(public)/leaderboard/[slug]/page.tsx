@@ -43,7 +43,7 @@ export default async function LeaderboardPage(props: {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-black text-white p-10">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-black text-white px-2 md:px-6 lg:px-10 py-2 md:py-6 lg:py-10">
       <div className="max-w-5xl mx-auto">
         <div className="max-w-5xl mx-auto">
           <LeaderboardHeader leaderboard={leaderboard} isOwner={isOwner} />

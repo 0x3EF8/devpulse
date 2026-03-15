@@ -108,7 +108,7 @@ export default function LeaderboardTable({
         {ranked.map((user) => (
           <div
             key={user.email}
-            className={`bg-white/5 border rounded-2xl p-5
+            className={`bg-white/5 border rounded-2xl p-5 min-w-0
               hover:bg-white/10 transition  ${user.user_id === ownerId ? "border-yellow-300" : "border-white/10"}`}
           >
             <div className="flex justify-between items-center mb-3">
