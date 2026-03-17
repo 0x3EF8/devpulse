@@ -33,9 +33,10 @@ export default async function Auth(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const protectedRoutes = ["/dashboard", "/logout"];
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
+  const isProtectedRoute = protectedRoutes.some((route) => {
+    const regex = new RegExp(`^${route}(/.*)?$`);
+    return regex.test(pathname);
+  });
 
   if (isProtectedRoute && !user) {
     console.log("User is not authenticated, redirecting to login.");

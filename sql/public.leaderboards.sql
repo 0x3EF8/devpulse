@@ -73,3 +73,19 @@ create policy "Users can join leaderboard"
 on public.leaderboard_members
 for insert
 with check (auth.uid() = user_id);
+
+create policy "Members can leave leaderboard"
+on public.leaderboard_members
+for delete
+using (user_id = auth.uid());
+
+create policy "Owner can manage members"
+on public.leaderboard_members
+for delete
+using (
+  leaderboard_id IN (
+    select leaderboard_id
+    from public.leaderboards
+    where owner_id = auth.uid()
+  )
+);

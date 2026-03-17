@@ -1,6 +1,18 @@
 import { createClient } from "../../lib/supabase/server";
 import BoardList from "../BoardList";
 
+export interface Leaderboard {
+  id: string;
+  name: string;
+  slug: string;
+  join_code?: string;
+  owner_id?: string;
+};
+
+export interface LeaderboardMember {
+  leaderboards: Leaderboard[];
+};
+
 export default async function LeaderboardsList() {
   const supabase = await createClient();
 
@@ -12,23 +24,23 @@ export default async function LeaderboardsList() {
 
   const { data: owned } = await supabase
     .from("leaderboards")
-    .select("id, name, slug, join_code")
+    .select("id, name, slug, owner_id")
     .eq("owner_id", user.id);
 
   const { data: joined } = await supabase
     .from("leaderboard_members")
-    .select("leaderboards(id, name, slug, join_code)")
+    .select("leaderboards(id, name, slug)")
     .eq("user_id", user.id)
     .neq("role", "owner");
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const joinedBoards = joined?.map((j: any) => j.leaderboards) || [];
+  const joinedBoards =
+    joined?.flatMap((j: LeaderboardMember) => j.leaderboards) || [];
 
   const ownedCount = owned?.length || 0;
   const joinedCount = joinedBoards.length;
 
   return (
-    <div 
+    <div
       className="glass-card p-6 h-full"
       data-aos="fade-up"
       data-aos-delay="200"
@@ -50,7 +62,7 @@ export default async function LeaderboardsList() {
               Owned ({ownedCount})
             </p>
             {owned.map((board) => (
-              <BoardList key={board.id} board={board} />
+              <BoardList key={board.id} user={user} board={board} />
             ))}
           </>
         )}
@@ -61,8 +73,8 @@ export default async function LeaderboardsList() {
             <p className="text-[10px] uppercase tracking-widest text-gray-700 font-semibold mt-4 mb-2">
               Joined ({joinedCount})
             </p>
-            {joinedBoards.map((board: { id: string; name: string; slug: string; join_code: string }) => (
-              <BoardList key={board.id} board={board} />
+            {joinedBoards.map((board) => (
+              <BoardList key={board.id} user={user} board={board} />
             ))}
           </>
         )}

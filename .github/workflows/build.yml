@@ -1,0 +1,47 @@
+name: Build Next.js App
+
+on:
+  push:
+    branches: ['master']
+  pull_request:
+    branches: ['master']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+            node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Supabase Docker images
+        uses: actions/cache@v4
+        with:
+           path: /var/lib/docker
+           key: ${{ runner.os }}-supabase-docker-${{ hashFiles('supabase/config.toml') }}
+           restore-keys: |
+             ${{ runner.os }}-supabase-docker-
+
+      - name: Start Supabase locally in background
+        run: |
+           npx --yes supabase start
+           SUPABASE_URL=$(npx --yes supabase status --output env | awk -F= '/API_URL/ {gsub(/"/,"",$2); print $2}')
+           SUPABASE_ANON_KEY=$(npx --yes supabase status --output env | awk -F= '/PUBLISHABLE_KEY/ {gsub(/"/,"",$2); print $2}')
+           SUPABASE_SERVICE_ROLE_KEY=$(npx --yes supabase status --output env | awk -F= '/SERVICE_ROLE_KEY/ {gsub(/"/,"",$2); print $2}')
+
+           echo "NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_ENV
+           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> $GITHUB_ENV
+           echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> $GITHUB_ENV
+
+           sleep 15 # wait
+
+      - name: Build project
+        run: npm run build
