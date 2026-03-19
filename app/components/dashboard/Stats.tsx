@@ -39,6 +39,7 @@ const CHART_COLORS = [
 
 export default function Stats() {
   const [syncing, setSyncing] = useState(false);
+  const [animated, setAnimated] = useState(false);
   const [stats, setStats] = useState<StatsData>({
     total_seconds: 0,
     daily_average: 0,
@@ -71,10 +72,17 @@ export default function Stats() {
       setTimeout(() => {
         AOS.refresh();
       }, 200);
+      
+      // Trigger progress bar animation shortly after mounting/syncing
+      const timer = setTimeout(() => {
+        setAnimated(true);
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [syncing, stats]);
 
   const handleSync = () => {
+    setAnimated(false); // Reset animation state so it plays again
     setSyncing(true);
     fetchStats();
   };
@@ -235,9 +243,9 @@ export default function Stats() {
                 {/* Mini bar */}
                 <div className="mt-3 h-1 rounded-full bg-white/5 overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    className="h-full rounded-full transition-all duration-[2000ms] ease-in-out"
                     style={{
-                      width: `${card.progress}%`,
+                      width: animated ? `${card.progress}%` : "0%",
                       background: card.color,
                     }}
                   />
@@ -322,8 +330,9 @@ export default function Stats() {
                       fillOpacity={1}
                       fill="url(#colorHours)"
                       isAnimationActive={true}
-                      animationDuration={1500}
-                      animationEasing="ease-out"
+                      animationBegin={500}
+                      animationDuration={2000}
+                      animationEasing="ease-in-out"
                       dot={{
                         r: 4,
                         fill: "#0a0a1a",
@@ -364,8 +373,9 @@ export default function Stats() {
                       dataKey="value"
                       stroke="none"
                       isAnimationActive={true}
-                      animationDuration={1500}
-                      animationEasing="ease-out"
+                      animationBegin={500}
+                      animationDuration={2000}
+                      animationEasing="ease-in-out"
                     >
                       {pieData.map((_, index) => (
                         <Cell

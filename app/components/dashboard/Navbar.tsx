@@ -29,7 +29,7 @@ function Sidebar({ email, name }: { email: string; name: string }) {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-all duration-300 ${
+      className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
         collapsed ? "w-[68px]" : "w-[240px]"
       }`}
       style={{
@@ -151,7 +151,7 @@ export default function DashboardLayout({
         {/* Collapse Toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={`hidden md:flex fixed z-50 top-[18px] transition-all duration-300 w-6 h-6 rounded-full bg-[#0f0f28] border border-white/10 items-center justify-center hover:border-indigo-500/30 hover:text-indigo-400 text-gray-600 ${
+          className={`hidden md:flex fixed z-50 top-[18px] transition-[left] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] w-6 h-6 rounded-full bg-[#0f0f28] border border-white/10 items-center justify-center hover:border-indigo-500/30 hover:text-indigo-400 text-gray-600 ${
             collapsed ? "left-[56px]" : "left-[228px]"
           }`}
         >
@@ -163,7 +163,7 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main
-          className={`min-h-screen p-6 md:p-8 grid-bg relative transition-all duration-300 overflow-x-hidden ${
+          className={`min-h-screen p-6 md:p-8 grid-bg relative transition-[margin-left] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-x-hidden ${
             collapsed ? "ml-[68px]" : "ml-[240px]"
           }`}
         >
