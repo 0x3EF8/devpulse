@@ -5,6 +5,7 @@ import { ToastContainer } from "react-toastify";
 import AOSWrapper from "./components/AOSWrapper";
 import DevToolsDetector from "./components/DevToolsDetector";
 import NextTopLoader from "nextjs-toploader";
+import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,11 +17,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
-  description:
-    "DevPulse is a platform that tracks your coding activity and allows you to compete with other developers on leaderboards. Sign up now to start monitoring your coding habits and see how you stack up against the competition!",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+
+  const envBase =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+
+  const metadataBase = new URL(
+    host ? `${proto}://${host}` : envBase || "http://localhost:3000",
+  );
+
+  return {
+    title: "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
+    description:
+      "DevPulse is a platform that tracks your coding activity and allows you to compete with other developers on leaderboards. Sign up now to start monitoring your coding habits and see how you stack up against the competition!",
+    metadataBase,
+  };
+}
 
 export default function RootLayout({
   children,

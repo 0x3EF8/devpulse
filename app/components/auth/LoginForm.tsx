@@ -4,11 +4,18 @@ import { useRef, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 export default function LoginForm() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +28,7 @@ export default function LoginForm() {
   };
 
   const handleOAuthSignIn = async () => {
+    document.cookie = `devpulse_redirect=${encodeURIComponent(redirectTo)}; path=/; max-age=600; samesite=lax`;
     await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {
@@ -64,7 +72,7 @@ export default function LoginForm() {
 
     signInWithPassword.then(() => {
       if (captcha.current) captcha.current.resetCaptcha();
-      router.push("/dashboard");
+      router.push(redirectTo);
     });
   };
 

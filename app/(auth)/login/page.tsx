@@ -9,7 +9,15 @@ export const metadata: Metadata = {
     "Log in to your DevPulse account to monitor your coding activity and compete on leaderboards.",
 };
 
-export default async function Login() {
+export default async function Login(props: {
+  searchParams?: Promise<{ redirect?: string }>;
+}) {
+  const redirectParam = (await props.searchParams)?.redirect;
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : undefined;
+
   return (
     <div className="min-h-screen flex bg-[#0a0a1a] text-white">
       {/* Left Side - Visual / Branding */}
@@ -88,7 +96,7 @@ export default async function Login() {
           <p className="mt-8 text-center text-sm text-gray-400">
             Don&apos;t have an account?{" "}
             <Link
-              href="/signup"
+              href={redirectTo ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"}
               className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors underline-offset-4 hover:underline"
             >
               Sign up

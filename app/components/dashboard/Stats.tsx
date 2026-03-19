@@ -39,6 +39,7 @@ const CHART_COLORS = [
 
 export default function Stats() {
   const [syncing, setSyncing] = useState(false);
+  const [barMounted, setBarMounted] = useState(false);
   const [stats, setStats] = useState<StatsData>({
     total_seconds: 0,
     daily_average: 0,
@@ -70,7 +71,10 @@ export default function Stats() {
     if (!syncing) {
       setTimeout(() => {
         AOS.refresh();
+        setBarMounted(true);
       }, 200);
+    } else {
+      setBarMounted(false);
     }
   }, [syncing, stats]);
 
@@ -80,8 +84,10 @@ export default function Stats() {
   };
 
   const formatHours = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const totalMinutes = Math.round(safeSeconds / 60);
+    const hrs = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
     if (hrs > 0) return `${hrs}h ${mins}m`;
     return `${mins}m`;
   };
@@ -98,14 +104,14 @@ export default function Stats() {
   const topLang = stats.languages[0]?.name || "N/A";
   const topEditor = stats.editors[0]?.name || "N/A";
 
-  // Generate mock daily data from total (WakaTime API gives weekly aggregate)
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const avgPerDay = stats.total_seconds / 7;
   const dailyData = days.map((day, i) => {
-    const variance = 0.4 + Math.sin(i * 1.5 + 1) * 0.6;
+    const varianceRaw = 0.4 + Math.sin(i * 1.5 + 1) * 0.6;
+    const variance = Math.max(0, varianceRaw);
     return {
       day,
-      hours: parseFloat(((avgPerDay * variance) / 3600).toFixed(1)),
+      hours: Math.max(0, parseFloat(((avgPerDay * variance) / 3600).toFixed(1))),
     };
   });
 
@@ -115,38 +121,46 @@ export default function Stats() {
     value: l.total_seconds,
   }));
 
+  const totalBarPct = Math.min((stats.total_seconds / (40 * 3600)) * 100, 100);
+  const avgDailySeconds =
+    stats.daily_average || stats.total_seconds / 7;
+  const avgBarPct = Math.min((avgDailySeconds / (8 * 3600)) * 100, 100);
+  // Top language / editor: use WakaTime's percent directly
+  const langBarPct = Math.min(stats.languages[0]?.percent || 0, 100);
+  const editorBarPct = Math.min(stats.editors[0]?.percent || 0, 100);
+
   const statCards = [
     {
       label: "Total Coding",
       value: totalHoursFormatted,
       sub: "Last 7 days",
       color: "#6366f1",
-      trend: "+12%",
-      trendUp: true,
+      trend: `${totalBarPct.toFixed(0)}%`,
+      barPct: totalBarPct,
     },
     {
       label: "Daily Average",
       value: avgDailyFormatted,
       sub: "Per day",
       color: "#8b5cf6",
-      trend: "+5%",
-      trendUp: true,
+      trend: `${avgBarPct.toFixed(0)}%`,
+      barPct: avgBarPct,
     },
     {
       label: "Top Language",
       value: topLang,
       sub: formatHours(stats.languages[0]?.total_seconds || 0),
       color: "#22d3ee",
-      trend: `${stats.languages[0]?.percent?.toFixed(0) || 0}%`,
-      trendUp: true,
+      trend: `${langBarPct.toFixed(0)}%`,
+      barPct: langBarPct,
     },
     {
       label: "Editor",
       value: topEditor,
       sub: formatHours(stats.editors[0]?.total_seconds || 0),
       color: "#34d399",
-      trend: `${stats.editors[0]?.percent?.toFixed(0) || 0}%`,
-      trendUp: true,
+      trend: `${editorBarPct.toFixed(0)}%`,
+      barPct: editorBarPct,
     },
   ];
 
@@ -224,11 +238,18 @@ export default function Stats() {
                 </p>
                 <p className="text-xs text-gray-600">{card.sub}</p>
                 {/* Mini bar */}
-                <div className="mt-3 h-1 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="mt-3 h-1 rounded-full bg-white/5 overflow-hidden cursor-pointer"
+                  role="button"
+                  onClick={() => {
+                    setBarMounted(false);
+                    setTimeout(() => setBarMounted(true), 10);
+                  }}
+                >
                   <div
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    className="h-full rounded-full transition-[width] duration-1000 ease-out"
                     style={{
-                      width: "65%",
+                      width: barMounted ? `${card.barPct}%` : "0%",
                       background: card.color,
                     }}
                   />

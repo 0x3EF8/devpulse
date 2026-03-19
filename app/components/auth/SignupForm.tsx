@@ -3,10 +3,17 @@
 import { useRef, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { toast } from "react-toastify";
+import { useSearchParams } from "next/navigation";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 export default function AuthPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,6 +27,7 @@ export default function AuthPage() {
   };
 
   const handleOAuthSignUp = async () => {
+    document.cookie = `devpulse_redirect=${encodeURIComponent(redirectTo)}; path=/; max-age=600; samesite=lax`;
     await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {

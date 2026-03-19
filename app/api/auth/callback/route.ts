@@ -4,8 +4,15 @@ import { createServerClient } from "@supabase/ssr";
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
+  const cookieRedirect = req.cookies.get("devpulse_redirect")?.value;
+  const redirectParam = cookieRedirect ? decodeURIComponent(cookieRedirect) : null;
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
 
-  const response = NextResponse.redirect(`${origin}/dashboard`);
+  const response = NextResponse.redirect(`${origin}${redirectTo}`);
+  response.cookies.set("devpulse_redirect", "", { path: "/", maxAge: 0 });
   if (!code) return response;
 
   const supabase = createServerClient(
@@ -27,7 +34,10 @@ export async function GET(req: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
+  if (error)
+    return NextResponse.redirect(
+      `${origin}/login?error=oauth_failed&redirect=${encodeURIComponent(redirectTo)}`,
+    );
 
   return response;
 }
