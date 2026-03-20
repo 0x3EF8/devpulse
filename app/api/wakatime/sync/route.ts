@@ -85,10 +85,24 @@ export async function GET(request: Request) {
   }
 
   if (apiKey) {
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ wakatime_api_key: apiKey })
       .eq("id", user.id);
+
+    if (error) {
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "This WakaTime API key is already in use." },
+          { status: 400 },
+        );
+      }
+
+      return NextResponse.json(
+        { error: "Failed to update API key" },
+        { status: 500 },
+      );
+    }
   }
 
   const { data: statsResult, error: statsError } = await supabase
