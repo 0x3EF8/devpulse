@@ -52,6 +52,7 @@ export default function Terms() {
         <li>WakaTime API (coding statistics)</li>
         <li>GitHub OAuth (authentication and profile data)</li>
         <li>Google Search Console (analytics)</li>
+        <li>Sentry (error monitoring)</li>
       </ul>
       <p className="mb-4">
         We are not responsible for the availability, accuracy, or practices of
@@ -65,6 +66,11 @@ export default function Terms() {
         You may provide a WakaTime API key to use certain features. You are
         responsible for keeping your API key secure. We are not liable for any
         misuse resulting from unauthorized access to your key.
+      </p>
+      <p className="mb-4">
+        When you visit us and an error occurs, we may use Sentry to capture
+        error details. This helps us improve the service, but we do not use this
+        data for any other purpose.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-2">5. Data and Content</h2>
@@ -87,9 +93,9 @@ export default function Terms() {
         7. Limitation of Liability
       </h2>
       <p className="mb-4">
-        DevPulse is provided &quot;as is&quot; without warranties of any kind. We are not
-        liable for any damages, including loss of data, arising from your use of
-        the service.
+        DevPulse is provided &quot;as is&quot; without warranties of any kind.
+        We are not liable for any damages, including loss of data, arising from
+        your use of the service.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-2">8. Termination</h2>

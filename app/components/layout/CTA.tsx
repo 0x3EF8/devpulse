@@ -2,8 +2,11 @@ import Link from "next/link";
 
 export default function CTA() {
   return (
-    <section className="max-w-4xl mx-auto px-6 pb-8 text-center">
-      <div className="glass-card p-12" data-aos="fade-up">
+    <section className="max-w-5xl mx-auto px-6 pb-5 relative z-10">
+      <div
+        className="glass-card border border-white/5 bg-white/[0.02] backdrop-blur-xl p-8 md:p-12 rounded-3xl"
+        data-aos="fade-up"
+      >
         <h2 className="text-3xl font-bold mb-4 gradient-text">
           Ready to track your coding productivity?
         </h2>
