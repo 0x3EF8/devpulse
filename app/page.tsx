@@ -7,6 +7,7 @@ import Contributors from "./components/landing-page/Contributors";
 import LosserMembers from "./components/landing-page/LosserMembers";
 import RecentLeaderboard from "./components/landing-page/RecentLeaderboard";
 import TopLeaderboard from "./components/landing-page/TopLeaderbord";
+import ContributeCard from "./components/landing-page/ContributeCard";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -328,6 +329,7 @@ export default async function Home() {
       <LosserMembers losser_members={losser_members ?? []} />
       <Contributors />
       <CTA />
+      <ContributeCard />
       <Footer />
     </div>
   );
