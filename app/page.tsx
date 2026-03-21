@@ -10,6 +10,7 @@ import TopLeaderboard, {
   TopMember,
 } from "./components/landing-page/TopLeaderbord";
 import ContributeCard from "./components/landing-page/ContributeCard";
+import VibeCoders from "./components/landing-page/VibeCoders";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -51,6 +52,26 @@ export default async function Home() {
           u.email !== null && u.total_seconds !== null && u.user_id !== null,
       )
     : [];
+
+  const topVibeCoders: TopMember[] = topMembers
+    .filter((member): member is TopMember =>
+      member.categories
+        ? member.categories?.some(
+            (cat) => cat.name === "AI Coding" && cat.total_seconds > 0,
+          ) &&
+          member.email !== null &&
+          member.total_seconds !== null
+        : false,
+    )
+    .map((member) => {
+      const codingCategory = member.categories
+        ? member.categories.find((cat) => cat.name === "AI Coding")
+        : undefined;
+
+      return codingCategory
+        ? { ...member, total_seconds: codingCategory.total_seconds }
+        : member;
+    });
 
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white overflow-hidden grid-bg relative">
@@ -347,6 +368,7 @@ export default async function Home() {
       <TopLeaderboard top_members={topMembers ?? []} />
       <RecentLeaderboard leaderboards={leaderboards ?? []} />
       <LosserMembers losser_members={losserMembers ?? []} />
+      <VibeCoders vibe_coders={topVibeCoders ?? []} />
       <Contributors />
       <CTA />
       <ContributeCard />
