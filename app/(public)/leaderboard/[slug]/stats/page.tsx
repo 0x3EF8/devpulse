@@ -1,16 +1,17 @@
-import { createClient } from "../../../lib/supabase/server";
-import Link from "next/link";
-import LeaderboardTable, { NonNullableMember } from "../../../components/LeaderboardTable";
-import LeaderboardHeader from "@/app/components/leaderboard/Header";
+import { createClient } from "@/app/lib/supabase/server";
+import { NonNullableMember } from "@/app/components/LeaderboardTable";
 import BackButton from "@/app/components/leaderboard/BackButton";
-import InviteFriendsButton from "@/app/components/leaderboard/InviteFriendsButton";
+import LeaderboardHeader from "@/app/components/leaderboard/Header";
 import Footer from "@/app/components/layout/Footer";
 import CTA from "@/app/components/layout/CTA";
+import StatsClientView from "./StatsClientView";
 
-export default async function LeaderboardPage(props: {
+export default async function LeaderboardStatsPage({
+  params,
+}: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await props.params;
+  const { slug } = await params;
   const supabase = await createClient();
 
   const { data: leaderboard } = await supabase
@@ -42,7 +43,6 @@ export default async function LeaderboardPage(props: {
   const isOwner = user?.id === leaderboard.owner_id;
 
   if (error) {
-    console.error("Error fetching members:", error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a1a] text-white grid-bg">
         <div className="glass-card p-10 text-center">
@@ -56,23 +56,11 @@ export default async function LeaderboardPage(props: {
     <div className="min-h-screen bg-[#0a0a1a] text-white grid-bg relative">
       <div className="max-w-5xl mx-auto p-6 md:p-10 relative z-10">
         <div className="flex items-start justify-between">
-          <BackButton />
-          <div className="flex gap-4 items-center">
-            <Link 
-              href={`/leaderboard/${slug}/stats`}
-              className="glass-card px-4 py-2 hover:bg-white/5 transition-colors text-sm font-medium flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-              View Stats
-            </Link>
-            <InviteFriendsButton />
-          </div>
+          <BackButton href={`/leaderboard/${slug}`} />
         </div>
         <LeaderboardHeader leaderboard={leaderboard} isOwner={isOwner} />
-        <LeaderboardTable
-          members={members as NonNullableMember[]}
-          ownerId={user?.id}
-        />
+        
+        <StatsClientView members={members as NonNullableMember[]} />
       </div>
 
       {!user && <CTA />}

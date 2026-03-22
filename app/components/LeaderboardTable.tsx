@@ -8,6 +8,10 @@ import {
   faFire,
   faStar,
   faRocket,
+  faTrophy,
+  faGhost,
+  faMedal,
+  faCrown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Database } from "../supabase-types";
 
@@ -36,125 +40,100 @@ export type NonNullableMember = Omit<
   editors: { name: string }[];
 };
 
-function LeaderboardStats({ members }: { members: NonNullableMember[] }) {
-  const totalHours = Math.round(
-    members.reduce((acc, m) => acc + (m.total_seconds || 0), 0) / 3600,
-  );
 
-  const languageCount: Record<string, number> = {};
-  const editorCount: Record<string, number> = {};
-  const osCount: Record<string, number> = {};
+const getBadgeInfo = (rank: number, hours: number) => {
+  if (hours >= 160) return { label: "MISSION IMPOSSIBLE", class: "badge-impossible", icon: faGhost };
+  if (hours >= 130) return { label: "GOD LEVEL", class: "badge-god", icon: faCrown };
+  if (hours >= 100) return { label: "STARLIGHT", class: "badge-starlight", icon: faStar };
+  if (hours >= 50) return { label: "ELITE", class: "badge-elite", icon: faFire };
+  if (hours >= 20) return { label: "PRO", class: "badge-pro", icon: faBolt };
+  if (hours >= 5) return { label: "NOVICE", class: "badge-novice", icon: faMedal };
+  if (hours >= 1) return { label: "NEWBIE", class: "badge-newbie", icon: null };
+  return { label: "", class: "hidden", icon: null }; // 0 hours
+};
 
-  members.forEach((m) => {
-    (m.languages || []).forEach((l) => {
-      languageCount[l.name] = (languageCount[l.name] || 0) + 1;
-    });
-    (m.editors || []).forEach((e) => {
-      editorCount[e.name] = (editorCount[e.name] || 0) + 1;
-    });
-    (m.operating_systems || []).forEach((os) => {
-      osCount[os.name] = (osCount[os.name] || 0) + 1;
-    });
-  });
-
-  const topLanguage =
-    Object.entries(languageCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-  const topEditor =
-    Object.entries(editorCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-  const topOS =
-    Object.entries(osCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+function LeaderboardPodium({ topUsers }: { topUsers: any[] }) {
+  if (topUsers.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 drop-shadow-xl border-white/5">
-      <div className="glass-card p-4 sm:p-5 relative overflow-hidden group">
-        <div className="absolute -top-6 -right-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl transition-transform group-hover:scale-125 duration-500" />
-        <div className="flex items-center gap-2 mb-2 sm:mb-3">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-            <FontAwesomeIcon
-              icon={faClock}
-              className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-400"
-            />
-          </div>
-          <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
-            Total Time
-          </span>
-        </div>
-        <div className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-          {totalHours}{" "}
-          <span className="text-xs sm:text-sm font-medium text-gray-500 tracking-normal">
-            hrs
-          </span>
-        </div>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+      {topUsers.map((user, idx) => {
+        const rankColor =
+          idx === 0
+            ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]"
+            : idx === 1
+              ? "text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.4)]"
+              : "text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.4)]";
+        
+        const badgeInfo = getBadgeInfo(user.rank, user.hours);
+        const initial = (user.email?.[0] || "?").toUpperCase();
 
-      <div className="glass-card p-4 sm:p-5 relative overflow-hidden group">
-        <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl transition-transform group-hover:scale-125 duration-500" />
-        <div className="flex items-center gap-2 mb-2 sm:mb-3">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-            <FontAwesomeIcon
-              icon={faCode}
-              className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-400"
-            />
-          </div>
-          <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
-            Top Lang
-          </span>
-        </div>
-        <div className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate mt-1">
-          {topLanguage}
-        </div>
-      </div>
+        return (
+          <div
+            key={user.user_id}
+            className="glass-card p-5 flex flex-col justify-between relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300"
+          >
+            {/* Minimal Background Glow based on rank */}
+            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-10 transition-transform group-hover:scale-125 duration-700 ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-300' : 'bg-amber-600'}`} />
 
-      <div className="glass-card p-4 sm:p-5 relative overflow-hidden group">
-        <div className="absolute -top-6 -right-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl transition-transform group-hover:scale-125 duration-500" />
-        <div className="flex items-center gap-2 mb-2 sm:mb-3">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-            <FontAwesomeIcon
-              icon={faTerminal}
-              className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400"
-            />
-          </div>
-          <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
-            Editor
-          </span>
-        </div>
-        <div className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate mt-1">
-          {topEditor}
-        </div>
-      </div>
+            <div className="flex justify-between items-start mb-6 relative z-10">
+              <div className="flex gap-4 items-center">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xl font-bold text-gray-200 shadow-inner relative">
+                    {initial}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white tracking-tight truncate max-w-[120px] sm:max-w-[140px]">
+                      {user.email.split("@")[0]}
+                    </div>
+                    <div className={`mt-1.5 badge-base ${badgeInfo.class}`}>
+                      {badgeInfo.icon && (
+                        <FontAwesomeIcon icon={badgeInfo.icon} className="w-2.5 h-2.5" />
+                      )}
+                      {badgeInfo.label}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 backdrop-blur-md shadow-lg ${rankColor}`}>
+                  <span className="text-xl font-black tracking-widest leading-none">
+                    {idx === 0 ? "01" : idx === 1 ? "02" : "03"}
+                  </span>
+                </div>
+              </div>
 
-      <div className="glass-card p-4 sm:p-5 relative overflow-hidden group">
-        <div className="absolute -top-6 -right-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl transition-transform group-hover:scale-125 duration-500" />
-        <div className="flex items-center gap-2 mb-2 sm:mb-3">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-            <FontAwesomeIcon
-              icon={faServer}
-              className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-400"
-            />
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-4 relative z-10">
+              <div className="text-center flex flex-col justify-center">
+                <span className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                  Hours
+                </span>
+                <span className="text-lg font-bold text-white tracking-tighter">
+                  {user.hours}
+                </span>
+              </div>
+              <div className="text-center flex flex-col justify-center border-l border-white/5 pl-2">
+                <span className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                  Language
+                </span>
+                <span className="text-sm font-medium text-gray-300 truncate">
+                  {user.languages?.[0] || "N/A"}
+                </span>
+              </div>
+              <div className="text-center flex flex-col justify-center border-l border-white/5 pl-2">
+                <span className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                  Editor
+                </span>
+                <span className="text-sm font-medium text-gray-300 truncate">
+                  {user.editor || "N/A"}
+                </span>
+              </div>
+            </div>
           </div>
-          <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
-            OS
-          </span>
-        </div>
-        <div className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate mt-1">
-          {topOS}
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
-
-const getBadgeInfo = (rank: number, hours: number) => {
-  if (rank === 1)
-    return { label: "GOD LEVEL", class: "badge-god", icon: faBolt };
-  if (rank === 2) return { label: "ELITE", class: "badge-elite", icon: faFire };
-  if (rank === 3) return { label: "PRO", class: "badge-pro", icon: faStar };
-  if (hours > 100)
-    return { label: "MASTER", class: "badge-master", icon: faRocket };
-  if (hours > 20)
-    return { label: "HUSTLER", class: "badge-hustler", icon: null };
-  return { label: "NOVICE", class: "badge-novice", icon: null };
-};
 
 export default function LeaderboardTable({
   members,
@@ -208,29 +187,45 @@ export default function LeaderboardTable({
           gap: 0.25rem;
           line-height: normal;
         }
-        .badge-god {
-          background: linear-gradient(90deg, rgba(234,179,8,0.15) 0%, rgba(253,224,71,0.6) 50%, rgba(234,179,8,0.15) 100%);
+        .badge-impossible {
+          background: linear-gradient(90deg, rgba(255,0,102,0.15) 0%, rgba(255,51,153,0.8) 50%, rgba(255,0,102,0.15) 100%);
           background-size: 200% auto;
-          animation: shimmer-bg 2s linear infinite;
-          border: 1px solid rgba(250,204,21,0.6);
-          color: #fef08a;
-          box-shadow: 0 0 10px rgba(250,204,21,0.3);
+          animation: pulse-glow 1.5s infinite, shimmer-bg 1.5s linear infinite;
+          border: 1px solid rgba(255,0,102,0.8);
+          color: #ff99cc;
+          box-shadow: 0 0 15px rgba(255,0,102,0.6);
         }
-        .badge-elite {
-          background: linear-gradient(90deg, rgba(148,163,184,0.15) 0%, rgba(241,245,249,0.5) 50%, rgba(148,163,184,0.15) 100%);
+        .badge-god {
+          background: linear-gradient(90deg, rgba(217,70,239,0.15) 0%, rgba(232,121,249,0.6) 50%, rgba(217,70,239,0.15) 100%);
+          background-size: 200% auto;
+          animation: shimmer-bg 2s linear infinite, glow-pulse 2s alternate infinite;
+          border: 1px solid rgba(217,70,239,0.6);
+          color: #f0abfc;
+          box-shadow: 0 0 10px rgba(217,70,239,0.4);
+        }
+        .badge-starlight {
+          background: linear-gradient(90deg, rgba(56,189,248,0.15) 0%, rgba(125,211,252,0.6) 50%, rgba(56,189,248,0.15) 100%);
           background-size: 200% auto;
           animation: shimmer-bg 2.5s linear infinite;
-          border: 1px solid rgba(203,213,225,0.5);
-          color: #ffffff;
-          box-shadow: 0 0 10px rgba(203,213,225,0.2);
+          border: 1px solid rgba(56,189,248,0.5);
+          color: #bae6fd;
+          box-shadow: 0 0 10px rgba(56,189,248,0.3);
         }
-        .badge-pro {
-          background: linear-gradient(90deg, rgba(217,119,6,0.15) 0%, rgba(252,211,77,0.5) 50%, rgba(217,119,6,0.15) 100%);
+        .badge-elite {
+          background: linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(248,113,113,0.6) 50%, rgba(239,68,68,0.15) 100%);
           background-size: 200% auto;
           animation: shimmer-bg 3s linear infinite;
-          border: 1px solid rgba(217,119,6,0.5);
-          color: #fce68a;
-          box-shadow: 0 0 10px rgba(217,119,6,0.2);
+          border: 1px solid rgba(239,68,68,0.5);
+          color: #fca5a5;
+          box-shadow: 0 0 10px rgba(239,68,68,0.3);
+        }
+        .badge-pro {
+          background: linear-gradient(90deg, rgba(234,179,8,0.15) 0%, rgba(253,224,71,0.5) 50%, rgba(234,179,8,0.15) 100%);
+          background-size: 200% auto;
+          animation: shimmer-bg 4s linear infinite;
+          border: 1px solid rgba(234,179,8,0.5);
+          color: #fef08a;
+          box-shadow: 0 0 10px rgba(234,179,8,0.2);
         }
         .badge-master {
           background: rgba(99,102,241,0.15);
@@ -243,14 +238,30 @@ export default function LeaderboardTable({
           color: #93c5fd;
         }
         .badge-novice {
+          background: linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(52,211,153,0.3) 50%, rgba(16,185,129,0.1) 100%);
+          background-size: 200% auto;
+          animation: shimmer-bg 5s linear infinite;
+          border: 1px solid rgba(16,185,129,0.4);
+          color: #6ee7b7;
+        }
+        .badge-newbie {
           background: rgba(107,114,128,0.15);
           border: 1px solid rgba(107,114,128,0.4);
           color: #d1d5db;
         }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 15px rgba(255,0,102,0.6); }
+          50% { box-shadow: 0 0 25px rgba(255,0,102,1); }
+        }
+        @keyframes glow-pulse {
+          0% { box-shadow: 0 0 5px rgba(217,70,239,0.4); }
+          100% { box-shadow: 0 0 15px rgba(217,70,239,0.8); }
+        }
       `,
         }}
       />
-      <LeaderboardStats members={members} />
+      
+      <LeaderboardPodium topUsers={ranked.slice(0, 3)} />
 
       {ranked.length === 0 ? (
         <div className="glass-card p-16 text-center">
@@ -264,14 +275,14 @@ export default function LeaderboardTable({
           <div className="hidden md:flex items-center px-4 sm:px-6 py-4 border-b border-white/5 bg-white/[0.01] text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             <div className="w-12 shrink-0 text-center">Rank</div>
             <div className="flex-1 ml-4">Developer</div>
-            <div className="w-48 lg:w-72 xl:w-80">Tech Stack</div>
-            <div className="w-32 lg:w-48">Environment</div>
-            <div className="w-24 text-right">Score</div>
+            <div className="w-48 lg:w-72 xl:w-80">Language</div>
+              <div className="w-32 lg:w-48">Editor</div>
+            <div className="w-24 text-right">Hours</div>
           </div>
 
           {/* List Body */}
           <div className="flex flex-col divide-y divide-white/5">
-            {ranked.map((user) => {
+            {ranked.slice(3).map((user) => {
               const isCurrentUser = user.user_id === ownerId;
               const pct = Math.max(2, (user.hours / maxHours) * 100);
               const badgeInfo = getBadgeInfo(user.rank, user.hours);
@@ -346,7 +357,7 @@ export default function LeaderboardTable({
 
                   {/* MOBILE BOTTOM STACK / DESKTOP RIGHT ROW */}
                   <div className="flex flex-col md:flex-row items-start md:items-center w-full md:w-auto mt-4 md:mt-0 pl-[2.75rem] sm:pl-[4.25rem] md:pl-0 gap-2.5 md:gap-0">
-                    {/* Tech Stack */}
+                      {/* Language */}
                     <div className="flex flex-wrap items-center gap-1.5 w-full md:w-48 lg:w-72 xl:w-80 md:shrink-0 md:pr-4">
                       {user.languages.length > 0 ? (
                         user.languages.map((lang, i) => (
@@ -364,7 +375,7 @@ export default function LeaderboardTable({
                       )}
                     </div>
 
-                    {/* Environment */}
+                      {/* Editor */}
                     <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-32 lg:w-48 md:shrink-0">
                       {user.editor !== "N/A" && (
                         <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium truncate max-w-[70px] lg:max-w-[90px]">

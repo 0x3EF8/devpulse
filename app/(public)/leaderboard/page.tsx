@@ -37,7 +37,7 @@ export default async function Leaderboards() {
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white grid-bg relative">
       <div className="max-w-5xl mx-auto p-6 md:p-10 relative z-10">
-        <BackButton />
+        <BackButton href="/dashboard/leaderboards" />
 
         <div className="flex justify-center items-center gap-3 mb-8">
           <Image src="/logo.svg" alt="DevPulse Logo" width={36} height={36} />
