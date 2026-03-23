@@ -50,8 +50,8 @@ export default function Chat({ user }: { user: User }) {
   const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
   const channelRef = useRef<RealtimeChannel>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [creatingConversation, setCreatingConversation] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const creatingRef = useRef(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -124,6 +124,16 @@ export default function Chat({ user }: { user: User }) {
             .then(({ data }) => {
               if (!data || data.length === 0) return;
               const convo = data[0];
+              // Double check the user is part of the conversation (should always be true)
+              if (
+                !convo.users.some(
+                  (u: { user_id: string }) => u.user_id === user.id,
+                )
+              )
+                return;
+              // Check if we already have this conversation in state
+              if (conversations.some((c) => c.id === convo.id)) return;
+
               setConversations((prev) => [
                 ...prev,
                 {
@@ -141,7 +151,7 @@ export default function Chat({ user }: { user: User }) {
     return () => {
       channel.unsubscribe();
     };
-  }, [user.id]);
+  }, [user.id, conversations]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -223,9 +233,9 @@ export default function Chat({ user }: { user: User }) {
   }, [showModal, user.id]);
 
   const createConversation = async (otherUser: ChatUser) => {
-    if (creatingConversation) return;
+    if (creatingRef.current) return;
+    creatingRef.current = true;
 
-    setCreatingConversation(true);
     const existing = conversations.find((conv) =>
       conv.users.some((u) => u.id === otherUser.user_id),
     );
@@ -274,8 +284,9 @@ export default function Chat({ user }: { user: User }) {
         ],
       },
     ]);
-    setCreatingConversation(false);
+
     setShowModal(false);
+    creatingRef.current = false;
   };
 
   const sendMessage = async () => {
@@ -296,22 +307,25 @@ export default function Chat({ user }: { user: User }) {
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="p-4 flex gap-4 overflow-x-auto border-b border-neutral-700">
+      <div className="px-3 pt-3 flex border-neutral-700">
         <button
           onClick={() => setShowModal(true)}
           className="flex flex-col items-center min-w-15"
         >
-          <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center">
             <FontAwesomeIcon icon={faPlus} className="text-white" />
           </div>
           <span className="text-xs mt-1">New</span>
         </button>
 
-        <Conversations
-          conversations={conversations}
-          user={user}
-          setConversationId={setConversationId}
-        />
+        <div className="flex-1 flex gap-4 overflow-x-auto">
+          <Conversations
+            conversations={conversations}
+            user={user}
+            conversationId={conversationId}
+            setConversationId={setConversationId}
+          />
+        </div>
       </div>
 
       {conversationId ? (

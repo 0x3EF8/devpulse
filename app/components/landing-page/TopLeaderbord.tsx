@@ -24,7 +24,7 @@ export default function TopLeaderboard({
               Celebrating the most dedicated coders in our community.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {top_members.map(
                 (
                   member: { email: string; total_seconds: number },
