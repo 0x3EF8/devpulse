@@ -11,6 +11,7 @@ import TopLeaderboard, {
 } from "./components/landing-page/TopLeaderbord";
 import ContributeCard from "./components/landing-page/ContributeCard";
 import VibeCoders from "./components/landing-page/VibeCoders";
+import { Json } from "./supabase-types";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -44,14 +45,14 @@ export default async function Home() {
 
   const topMembers: TopMember[] = top_members
     ? top_members.filter(
-        (u): u is { email: string; total_seconds: number; user_id: string } =>
+        (u): u is TopMember =>
           u.email !== null && u.total_seconds !== null && u.user_id !== null,
       )
     : [];
 
   const losserMembers: TopMember[] = losser_members
     ? losser_members.filter(
-        (u): u is { email: string; total_seconds: number; user_id: string } =>
+        (u): u is TopMember =>
           u.email !== null && u.total_seconds !== null && u.user_id !== null,
       )
     : [];

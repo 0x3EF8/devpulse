@@ -44,14 +44,17 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          type: string
         }
         Insert: {
           created_at?: string
           id?: string
+          type?: string
         }
         Update: {
           created_at?: string
           id?: string
+          type?: string
         }
         Relationships: []
       }
@@ -262,6 +265,7 @@ export type Database = {
       }
       top_user_stats: {
         Row: {
+          categories: Json | null
           email: string | null
           total_seconds: number | null
           user_id: string | null

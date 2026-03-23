@@ -1,7 +1,10 @@
+import { Json } from "@/app/supabase-types";
+
 export interface TopMember {
   email: string;
   total_seconds: number;
-  categories?: { name: string; total_seconds: number }[];
+  categories: { name: string; total_seconds: number }[] | null;
+  user_id: string | null;
 }
 
 export default function TopLeaderboard({

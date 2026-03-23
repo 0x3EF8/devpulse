@@ -11,6 +11,7 @@ import Messages from "./chat/Messages";
 export interface Conversation {
   id: string;
   users: { id: string; email: string }[];
+  type: string;
 }
 
 export interface Message {
@@ -51,7 +52,26 @@ export default function Chat({ user }: { user: User }) {
   const channelRef = useRef<RealtimeChannel>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [badWords, setBadWords] = useState<string[]>([]);
   const creatingRef = useRef(false);
+
+  useEffect(() => {
+    fetch(
+      "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/refs/heads/master/en",
+    )
+      .then((res) => res.text())
+      .then((text) => {
+        const wordsArray = text.split("\n").filter(Boolean);
+        setBadWords(wordsArray);
+      });
+  }, []);
+
+  const sanitizeInput = (input: string) => {
+    if (!badWords.length) return input;
+
+    const filter = new RegExp(`\\b(${badWords.join("|")})\\b`, "gi");
+    return input.replace(filter, "*-?;[]");
+  };
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -70,7 +90,8 @@ export default function Chat({ user }: { user: User }) {
           `
           conversation: conversations(
             id,
-            users: conversation_participants!inner(user_id, email)
+            users: conversation_participants!inner(user_id, email),
+            type
           )
           `,
         )
@@ -88,9 +109,15 @@ export default function Chat({ user }: { user: User }) {
               id: u.user_id,
               email: u.email,
             })),
+            type: convo.type,
           };
         });
-        setConversations(convs);
+
+        // making sure global conversation is always first
+        const sortedConvs = convs.sort((a, b) =>
+          a.type === "global" ? -1 : b.type === "global" ? 1 : 0,
+        );
+        setConversations(sortedConvs);
       }
     };
     fetchConversations();
@@ -117,7 +144,8 @@ export default function Chat({ user }: { user: User }) {
             .select(
               `
                 id,
-                users:conversation_participants!inner(user_id)
+                users:conversation_participants!inner(user_id),
+                type
               `,
             )
             .eq("id", row.conversation_id)
@@ -142,6 +170,7 @@ export default function Chat({ user }: { user: User }) {
                     id: u.user_id,
                     email: row.email,
                   })),
+                  type: convo.type,
                 },
               ]);
             });
@@ -282,6 +311,7 @@ export default function Chat({ user }: { user: User }) {
           { id: user.id, email: user.email ?? "" },
           { id: otherUser.user_id, email: otherUser.email ?? "" },
         ],
+        type: "private",
       },
     ]);
 
@@ -295,7 +325,7 @@ export default function Chat({ user }: { user: User }) {
     await supabase.from("messages").insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      text: input.slice(0, 1000), // limit to 1000 chars
+      text: sanitizeInput(input.slice(0, 1000)), // limit to 1000 chars
     });
 
     setTimeout(() => {

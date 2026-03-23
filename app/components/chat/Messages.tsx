@@ -76,8 +76,26 @@ export default function Messages({
               </div>
             )}
             <div>
+              <span
+                className={`text-xs font-semibold ${
+                  msg.sender_id === user.id
+                    ? "text-indigo-400"
+                    : "text-gray-400"
+                }`}
+              >
+                {
+                  conversations
+                    .find(
+                      (conv) =>
+                        conv.id === msg.conversation_id &&
+                        conv.type === "global",
+                    )
+                    ?.users.find((u) => u.id === msg.sender_id)
+                    ?.email.split("@")[0]
+                }
+              </span>
               <div
-                className={`px-4 py-2 rounded-2xl max-w-xs overflow-hidden ${
+                className={`px-4 py-2 rounded max-w-xs overflow-hidden ${
                   msg.sender_id === user.id ? "bg-indigo-500" : "bg-neutral-700"
                 }`}
               >
