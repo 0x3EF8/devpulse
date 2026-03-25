@@ -149,8 +149,6 @@ function Sidebar({ role }: { role: string }) {
 }
 
 export default function DashboardLayout({
-  email,
-  name,
   role,
   children,
 }: {
@@ -220,8 +218,12 @@ export default function DashboardLayout({
       reopenBtnHideTimeoutRef.current = null;
     }
 
-    if (mobileHidden) {
+    const reopenBtn = () => {
       setReopenBtnVisible(true);
+    };
+
+    if (mobileHidden) {
+      reopenBtn();
       return;
     }
 

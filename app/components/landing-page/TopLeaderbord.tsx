@@ -1,5 +1,3 @@
-import { Json } from "@/app/supabase-types";
-
 export interface TopMember {
   email: string;
   total_seconds: number;

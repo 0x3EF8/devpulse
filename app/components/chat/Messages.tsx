@@ -115,10 +115,11 @@ export default function Messages({
               >
                 {mediaViewer.type === "image" ? (
                   <div className="relative h-full w-full flex items-center justify-center">
-                    <img
+                    <Image
                       src={mediaViewer.url}
                       alt={mediaViewer.filename}
                       className="h-full w-full object-contain"
+                      fill
                     />
                     <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
                       <button

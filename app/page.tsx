@@ -11,7 +11,6 @@ import TopLeaderboard, {
 } from "./components/landing-page/TopLeaderbord";
 import ContributeCard from "./components/landing-page/ContributeCard";
 import VibeCoders from "./components/landing-page/VibeCoders";
-import { Json } from "./supabase-types";
 
 export default async function Home() {
   const supabase = await createClient();

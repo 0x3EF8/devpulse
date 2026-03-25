@@ -6,13 +6,12 @@ import { Database } from "../supabase-types";
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faAdd,
   faClock,
   faCode,
   faExternalLink,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { formatHours, timeAgo } from "../utils/time";
+import { timeAgo } from "../utils/time";
 
 const supabase = createClient();
 

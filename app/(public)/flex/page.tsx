@@ -18,7 +18,7 @@ export default async function Flexs() {
     supabase.auth.getUser(),
   ]);
 
-  const { data, error } = userFlexes;
+  const { data } = userFlexes;
   const { data: user } = userResult;
 
   return (
