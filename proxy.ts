@@ -7,6 +7,11 @@ const env = process.env.NODE_ENV;
 
 // headless → rate limit → auth; only return when we block or redirect
 export async function proxy(req: NextRequest) {
+  const response = NextResponse.next({
+    request: { headers: req.headers },
+  });
+  response.headers.set("x-pathname", req.nextUrl.pathname);
+
   const headlessResponse = headlessBrowserCheck(req);
   if (headlessResponse) return headlessResponse;
 
@@ -18,12 +23,10 @@ export async function proxy(req: NextRequest) {
   const authResponse = await auth(req);
   if (authResponse) {
     console.log("Auth middleware triggered for:", req.nextUrl.pathname);
-    return authResponse
-  };
+    return authResponse;
+  }
 
-  return NextResponse.next({
-    request: { headers: req.headers },
-  });
+  return response;
 }
 
 export const config = {

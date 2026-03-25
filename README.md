@@ -1,4 +1,4 @@
-<img src="this-is-a-screenshot.png" alt="Screenshot of the floating console extension in action" width="600">
+<img src="public/images/devpulse.cover.png" alt="Screenshot of the floating console extension in action" width="600">
   
 # devpulse
 
@@ -7,7 +7,6 @@ Measure and share your coding productivity with personalized leaderboards. Compa
 ## Getting Started
 Install the dependencies:
 
-```bash
 npm install
 ```
 

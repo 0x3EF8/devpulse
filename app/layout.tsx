@@ -6,6 +6,7 @@ import AOSWrapper from "./components/AOSWrapper";
 import DevToolsDetector from "./components/DevToolsDetector";
 import NextTopLoader from "nextjs-toploader";
 import { headers } from "next/headers";
+import NortonSafeweb from "./components/NortonSafeweb";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,22 +20,72 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-
-  const envBase =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
-
-  const metadataBase = new URL(
-    host ? `${proto}://${host}` : envBase || "http://localhost:3000",
-  );
 
   return {
-    title: "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
+    metadataBase: new URL("https://devpulse-waka.vercel.app"),
+    title:
+      "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
     description:
       "DevPulse is a platform that tracks your coding activity and allows you to compete with other developers on leaderboards. Sign up now to start monitoring your coding habits and see how you stack up against the competition!",
-    metadataBase,
+    keywords: [
+      "DevPulse",
+      "coding activity tracker",
+      "developer leaderboards",
+      "WakaTime integration",
+      "coding stats",
+      "programming habits",
+      "developer competition",
+      "flex your projects",
+      "coding streaks",
+      "productivity insights",
+    ],
+    alternates: {
+      canonical: `https://devpulse-waka.vercel.app${h.get("x-pathname")}`,
+      types: {
+        "application/xml": "https://devpulse-waka.vercel.app/sitemap.xml",
+      },
+    },
+    openGraph: {
+      title:
+        "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
+      description:
+        "DevPulse is a platform that tracks your coding activity and allows you to compete with other developers on leaderboards. Sign up now to start monitoring your coding habits and see how you stack up against the competition!",
+      url: "https://devpulse-waka.vercel.app",
+      siteName: "DevPulse",
+      images: [
+        {
+          url: "https://devpulse-waka.vercel.app/images/devpulse.cover.png",
+          width: 1200,
+          height: 630,
+          alt: "DevPulse Cover Image",
+        },
+      ],
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title:
+        "DevPulse - Monitor Your Coding Activity and Compete on Leaderboards",
+      description:
+        "DevPulse is a platform that tracks your coding activity and allows you to compete with other developers on leaderboards. Sign up now to start monitoring your coding habits and see how you stack up against the competition!",
+      images: [
+        {
+          url: "https://devpulse-waka.vercel.app/images/devpulse.cover.png",
+          alt: "DevPulse Cover Image",
+        },
+      ],
+    },
+    icons: [
+      {
+        rel: "icon",
+        url: "/favicon.ico",
+      },
+      {
+        rel: "icon",
+        url: "/favicon.png",
+      },
+    ],
   };
 }
 
@@ -55,6 +106,7 @@ export default function RootLayout({
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="hostname" content="devpulse-waka.vercel.app" />
+        <NortonSafeweb />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
