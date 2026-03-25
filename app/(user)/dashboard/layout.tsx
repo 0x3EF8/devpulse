@@ -17,7 +17,7 @@ export default async function Layout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("wakatime_api_key, email")
+    .select("wakatime_api_key, email, role")
     .eq("id", user.id)
     .single();
 
@@ -29,7 +29,7 @@ export default async function Layout({
   const name = user?.user_metadata?.name || email.split("@")[0];
 
   return (
-    <DashboardLayout email={email} name={name}>
+    <DashboardLayout email={email} name={name} role={profile.role}>
       {children}
     </DashboardLayout>
   );

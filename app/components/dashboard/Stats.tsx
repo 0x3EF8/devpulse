@@ -39,12 +39,12 @@ interface StatsProps {
 }
 
 export default function Stats({ name = "User", email = "user@example.com" }: StatsProps) {
- 
+
   const [syncing, setSyncing] = useState(false);
   const [animated, setAnimated] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  
+
   // Close profile dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -117,7 +117,7 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
   const topEditor = stats.editors[0]?.name || "N/A";
 
   // Use actual daily_stats if available, otherwise fallback to empty/flat
-  const dailyData = stats.daily_stats && stats.daily_stats.length > 0 
+  const dailyData = stats.daily_stats && stats.daily_stats.length > 0
     ? stats.daily_stats.map(d => {
         // Parse date to short day name (e.g., "Mon")
         const dateObj = new Date(d.date);
@@ -249,7 +249,7 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
             </button>
 
             {/* Profile Section */}
-            <div 
+            <div
                className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-800/80 cursor-pointer group"
                ref={profileRef}
                onClick={() => setProfileOpen(!profileOpen)}
@@ -264,7 +264,7 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
 
               {/* Dropdown Menu */}
               {profileOpen && (
-                <div 
+                <div
                   className="absolute right-0 top-full mt-3 w-48 rounded-xl glass-card py-2 shadow-xl border border-gray-800/60 z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                 >
