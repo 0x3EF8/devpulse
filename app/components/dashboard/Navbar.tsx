@@ -157,7 +157,7 @@ export default function DashboardLayout({
   role: string;
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileHidden, setMobileHidden] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -196,7 +196,8 @@ export default function DashboardLayout({
         setCollapsed(true);
         setMobileHidden(true);
       } else {
-        setCollapsed(false);
+        // default to collapsed on desktop too
+        setCollapsed(true);
         setMobileHidden(false);
       }
     };

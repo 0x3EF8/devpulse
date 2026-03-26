@@ -71,6 +71,12 @@ export default function Player({
   const [settingsArrowX, setSettingsArrowX] = useState<number | null>(null);
   const hintTimeoutRef = useRef<number | null>(null);
 
+  const hideHint = () => {
+    if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
+    setActiveHint(null);
+    setHintPos(null);
+  };
+
   const progress = useMemo(() => {
     if (!duration) return 0;
     return Math.min(100, (currentTime / duration) * 100);
@@ -141,7 +147,9 @@ export default function Player({
   }, [playing, showUi, currentTime, isSeeking]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     if (!showUi) setShowSettings(false);
+    // eslint-disable-next-line
     if (!showUi) setShowMobileVolume(false);
   }, [showUi]);
 
@@ -189,11 +197,13 @@ export default function Player({
   }, [showSettings]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     if (showSettings) hideHint();
   }, [showSettings]);
 
   useEffect(() => {
     if (quality !== "Auto" && detectedQuality && quality !== detectedQuality) {
+      // eslint-disable-next-line
       setQuality(detectedQuality);
     }
   }, [quality, detectedQuality]);
@@ -334,12 +344,6 @@ export default function Player({
     if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
     setActiveHint(label);
     hintTimeoutRef.current = window.setTimeout(() => setActiveHint(null), 1200);
-  };
-
-  const hideHint = () => {
-    if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
-    setActiveHint(null);
-    setHintPos(null);
   };
 
   const getVolumeHintLabel = () => {

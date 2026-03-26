@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { User } from "@supabase/supabase-js";
 import ReactMarkdown from "react-markdown";
@@ -15,26 +15,12 @@ import {
   faPause,
   faPlay,
   faXmark,
+  faChevronLeft,
+  faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import Player from "./Player";
-
-const RANK_BORDER: Record<string, { border: string; ring: string }> = {
-  "MISSION IMPOSSIBLE": {
-    border: "border-fuchsia-400",
-    ring: "ring-fuchsia-400/25",
-  },
-  "GOD LEVEL": { border: "border-fuchsia-400", ring: "ring-fuchsia-300/25" },
-  STARLIGHT: { border: "border-sky-400", ring: "ring-sky-300/25" },
-  ELITE: { border: "border-red-400", ring: "ring-red-300/25" },
-  PRO: { border: "border-indigo-400", ring: "ring-indigo-300/25" },
-  NOVICE: { border: "border-emerald-400", ring: "ring-emerald-300/25" },
-  NEWBIE: { border: "border-lime-400", ring: "ring-lime-300/25" },
-};
-const DEFAULT_RANK_BORDER = {
-  border: "border-indigo-400",
-  ring: "ring-indigo-300/20",
-};
 
 export default function Messages({
   messages,
@@ -47,7 +33,7 @@ export default function Messages({
   user: User;
   conversations: Conversation[];
   bottomRef: React.RefObject<HTMLDivElement | null>;
-  badgesByUserId?: Record<string, { label: string; className: string }>;
+  badgesByUserId?: Record<string, { label: string; className: string; icon?: IconDefinition }>;
 }) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [mediaViewer, setMediaViewer] = useState<{
@@ -56,6 +42,13 @@ export default function Messages({
     filename: string;
   } | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  const allMediaAttachments = useMemo(() => {
+    return messages
+      .flatMap((m) => m.attachments || [])
+      .filter((a) => a?.mimetype?.startsWith("image/") || a?.mimetype?.startsWith("video/"))
+      .reverse();
+  }, [messages]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -93,6 +86,24 @@ export default function Messages({
     }
   };
 
+  const currentMediaIndex = mediaViewer ? allMediaAttachments.findIndex(a => a.public_url === mediaViewer.url) : -1;
+  const hasPrevMedia = currentMediaIndex > 0;
+  const hasNextMedia = currentMediaIndex !== -1 && currentMediaIndex < allMediaAttachments.length - 1;
+
+  const navigateMedia = (e: React.MouseEvent, step: number) => {
+    e.stopPropagation();
+    if (currentMediaIndex === -1) return;
+    const nextIndex = currentMediaIndex + step;
+    if (nextIndex >= 0 && nextIndex < allMediaAttachments.length) {
+      const att = allMediaAttachments[nextIndex];
+      setMediaViewer({
+        type: att.mimetype?.startsWith("video/") ? "video" : "image",
+        url: att.public_url,
+        filename: att.filename || "Media",
+      });
+    }
+  };
+
   return (
     <>
       {isMounted &&
@@ -102,8 +113,28 @@ export default function Messages({
             className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4"
             onClick={() => setMediaViewer(null)}
           >
+            {hasPrevMedia && (
+              <button
+                type="button"
+                onClick={(e) => navigateMedia(e, -1)}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition shadow-lg backdrop-blur-md border border-white/10"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} className="w-5 h-5" />
+              </button>
+            )}
+
+            {hasNextMedia && (
+              <button
+                type="button"
+                onClick={(e) => navigateMedia(e, 1)}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition shadow-lg backdrop-blur-md border border-white/10"
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="w-5 h-5" />
+              </button>
+            )}
+
             <div
-              className="w-screen h-[100dvh] sm:w-full sm:h-auto sm:max-w-5xl sm:max-h-[90vh] rounded-none sm:rounded-2xl border-0 sm:border border-white/10 bg-[#0d0d18]/95 shadow-2xl overflow-hidden"
+              className="w-screen h-[100dvh] sm:w-full sm:h-auto sm:max-w-5xl sm:max-h-[90vh] rounded-none sm:rounded-2xl border-0 sm:border border-white/10 bg-[rgba(10,10,30,0.9)]/95 shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div
@@ -157,7 +188,7 @@ export default function Messages({
         )}
 
       <div
-        className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-1"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
         id="chat-container"
       >
         {showScrollBtn && (
@@ -173,7 +204,7 @@ export default function Messages({
 
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center pt-16">
-            <div className="text-3xl mb-3">💬</div>
+              <div className="text-3xl mb-3">💬</div>
             <p className="text-gray-500 text-sm">No messages yet. Say hello!</p>
           </div>
         )}
@@ -192,11 +223,8 @@ export default function Messages({
 
           const badge = badgesByUserId?.[msg.sender_id];
           const badgeLabel = badge?.label ?? "NEWBIE";
-          const rankBorder = RANK_BORDER[badgeLabel] ?? DEFAULT_RANK_BORDER;
-
-          const badgePillClass =
-            badge?.className ??
-            `bg-white/[0.03] text-gray-300 ring-1 ${rankBorder.border} ${rankBorder.ring}`;
+          
+          const badgePillClass = badge?.className ?? "badge-newbie";
 
           // long msg? nudge avatar up, ez.
           const text = msg.text ?? "";
@@ -257,8 +285,9 @@ export default function Messages({
                   {senderName}
                 </span>
                 <span
-                  className={`text-[9px] px-1.5 py-0.5 rounded-full border leading-none ${badgePillClass}`}
+                  className={`badge-base shrink-0 !text-[9px] !py-0.5 !px-2 ${badgePillClass}`}
                 >
+                  {badge?.icon && <FontAwesomeIcon icon={badge.icon} className="w-2.5 h-2.5" />}
                   {badgeLabel}
                 </span>
                   {!isSelf && (
@@ -270,13 +299,13 @@ export default function Messages({
 
                 {msg.text && (
                   <div
-                    className={`px-3 py-2 rounded-2xl text-sm leading-relaxed border break-words break-all overflow-x-hidden ${
+                    className={`px-5 py-3 text-[14px] leading-relaxed break-words break-all overflow-x-hidden ${
                       isSelf
-                        ? "bg-indigo-500/15 border-indigo-400/25 text-gray-100"
-                        : "bg-neutral-800/60 border-white/8 text-gray-100"
+                        ? "bg-indigo-600 border border-indigo-500/50 text-white rounded-2xl rounded-br-sm shadow-sm"
+                        : "bg-[rgba(15,15,40,0.6)] border border-indigo-500/15 text-gray-200 rounded-2xl rounded-bl-sm"
                     }`}
                   >
-                    <div className="prose prose-invert prose-sm max-w-none break-words break-all whitespace-pre-wrap">
+                    <div className="prose prose-invert prose-sm max-w-none break-words break-all whitespace-pre-wrap leading-[1.6]">
                       <ReactMarkdown
                         components={{
                           code({ className, children, ...props }) {
@@ -784,3 +813,4 @@ function AudioAttachmentPlayer({
     </div>
   );
 }
+
