@@ -4,6 +4,7 @@ import Footer from "@/app/components/layout/Footer";
 import CTA from "@/app/components/layout/CTA";
 import Image from "next/image";
 import { Metadata } from "next";
+import { getUserWithProfile } from "@/app/lib/supabase/help/user";
 
 export const metadata: Metadata = {
   title: "Leaderboards - DevPulse",
@@ -54,16 +55,13 @@ export const metadata: Metadata = {
 export default async function Leaderboards() {
   const supabase = await createClient();
 
-  const [leaderboardsResult, userResult] = await Promise.all([
+  const [{ data, error }, { user }] = await Promise.all([
     supabase
       .from("leaderboards")
       .select("id, name, slug")
       .order("created_at", { ascending: false }),
-    supabase.auth.getUser(),
+    getUserWithProfile(),
   ]);
-
-  const { data, error } = leaderboardsResult;
-  const { data: user } = userResult;
 
   if (error) {
     return (

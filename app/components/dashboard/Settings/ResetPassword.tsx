@@ -67,6 +67,10 @@ export default function ResetPassword({ user }: { user: User }) {
           Reset Password
         </h3>
 
+        <p className="text-gray-400 mb-4 text-sm">
+          You will receive an email with instructions to reset your password.
+        </p>
+
         <button type="submit" disabled={loading} className="btn-primary">
           Send Reset Email
         </button>

@@ -17,6 +17,7 @@ import Machines from "./widgets/Machines";
 import Categories from "./widgets/Categories";
 
 import Dependencies from "./widgets/Dependencies";
+import Image from "next/image";
 
 export interface StatsData {
   total_seconds: number;
@@ -36,10 +37,14 @@ export interface StatsData {
 interface StatsProps {
   name?: string;
   email?: string;
+  avatar: string | null;
 }
 
-export default function Stats({ name = "User", email = "user@example.com" }: StatsProps) {
-
+export default function Stats({
+  name = "User",
+  email = "user@example.com",
+  avatar = null,
+}: StatsProps) {
   const [syncing, setSyncing] = useState(false);
   const [animated, setAnimated] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -48,7 +53,10 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
   // Close profile dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
         setProfileOpen(false);
       }
     }
@@ -117,25 +125,28 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
   const topEditor = stats.editors[0]?.name || "N/A";
 
   // Use actual daily_stats if available, otherwise fallback to empty/flat
-  const dailyData = stats.daily_stats && stats.daily_stats.length > 0
-    ? stats.daily_stats.map(d => {
-        // Parse date to short day name (e.g., "Mon")
-        const dateObj = new Date(d.date);
-        const dayStr = dateObj.toLocaleDateString("en-US", { weekday: "short" });
-        return {
-          day: dayStr,
-          hours: parseFloat((d.total_seconds / 3600).toFixed(1)),
-        };
-      })
-    : [
-        { day: "Mon", hours: 0 },
-        { day: "Tue", hours: 0 },
-        { day: "Wed", hours: 0 },
-        { day: "Thu", hours: 0 },
-        { day: "Fri", hours: 0 },
-        { day: "Sat", hours: 0 },
-        { day: "Sun", hours: 0 }
-      ];
+  const dailyData =
+    stats.daily_stats && stats.daily_stats.length > 0
+      ? stats.daily_stats.map((d) => {
+          // Parse date to short day name (e.g., "Mon")
+          const dateObj = new Date(d.date);
+          const dayStr = dateObj.toLocaleDateString("en-US", {
+            weekday: "short",
+          });
+          return {
+            day: dayStr,
+            hours: parseFloat((d.total_seconds / 3600).toFixed(1)),
+          };
+        })
+      : [
+          { day: "Mon", hours: 0 },
+          { day: "Tue", hours: 0 },
+          { day: "Wed", hours: 0 },
+          { day: "Thu", hours: 0 },
+          { day: "Fri", hours: 0 },
+          { day: "Sat", hours: 0 },
+          { day: "Sun", hours: 0 },
+        ];
 
   // Pie data
   const pieData = stats.languages.slice(0, 6).map((l) => ({
@@ -193,8 +204,13 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
     },
     {
       label: "Best Day",
-      value: stats.best_day?.date && stats.best_day.total_seconds ? formatHours(stats.best_day.total_seconds) : "N/A",
-      sub: stats.best_day?.date ? new Date(stats.best_day.date).toLocaleDateString() : "",
+      value:
+        stats.best_day?.date && stats.best_day.total_seconds
+          ? formatHours(stats.best_day.total_seconds)
+          : "N/A",
+      sub: stats.best_day?.date
+        ? new Date(stats.best_day.date).toLocaleDateString()
+        : "",
       color: "#f59e0b",
       trend: "Top",
       trendUp: true,
@@ -224,78 +240,127 @@ export default function Stats({ name = "User", email = "user@example.com" }: Sta
         </div>
 
         <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-            {/* Sync Button as an icon button */}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className={`p-2 rounded-full hover:bg-gray-800/50 text-gray-400 hover:text-white transition-colors relative ${
-                syncing ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              title="Sync Now"
+          {/* Sync Button as an icon button */}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className={`p-2 rounded-full hover:bg-gray-800/50 text-gray-400 hover:text-white transition-colors relative ${
+              syncing ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            title="Sync Now"
+          >
+            <svg
+              className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <svg
-                className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
 
-            {/* Profile Section */}
-            <div
-               className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-800/80 cursor-pointer group"
-               ref={profileRef}
-               onClick={() => setProfileOpen(!profileOpen)}
-            >
+          {/* Profile Section */}
+          <div
+            className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-800/80 cursor-pointer group"
+            ref={profileRef}
+            onClick={() => setProfileOpen(!profileOpen)}
+          >
+            {avatar ? (
+              <Image
+                src={avatar}
+                alt="Profile Avatar"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
                 {email.charAt(0).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors hidden sm:block">{name}</span>
-              <svg className={`w-4 h-4 text-gray-500 group-hover:text-white transition-transform duration-200 hidden sm:block ${profileOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+            )}
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors hidden sm:block">
+              {name}
+            </span>
+            <svg
+              className={`w-4 h-4 text-gray-500 group-hover:text-white transition-transform duration-200 hidden sm:block ${profileOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
 
-              {/* Dropdown Menu */}
-              {profileOpen && (
-                <div
-                  className="absolute right-0 top-full mt-3 w-48 rounded-xl glass-card py-2 shadow-xl border border-gray-800/60 z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="px-4 py-2 border-b border-gray-800/60 mb-2 md:hidden">
-                    <p className="text-sm font-medium text-white truncate">{name}</p>
-                    <p className="text-[10px] text-gray-500 truncate">{email}</p>
-                  </div>
-                  <Link
-                    href="/dashboard/settings"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.03] transition-colors"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Settings
-                  </Link>
-                  <Link
-                    href="/logout"
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors mt-1"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Logout
-                  </Link>
+            {/* Dropdown Menu */}
+            {profileOpen && (
+              <div
+                className="absolute right-0 top-full mt-3 w-48 rounded-xl glass-card py-2 shadow-xl border border-gray-800/60 z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-4 py-2 border-b border-gray-800/60 mb-2 md:hidden">
+                  <p className="text-sm font-medium text-white truncate">
+                    {name}
+                  </p>
+                  <p className="text-[10px] text-gray-500 truncate">{email}</p>
                 </div>
-              )}
-            </div>
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.03] transition-colors"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  Settings
+                </Link>
+                <Link
+                  href="/logout"
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors mt-1"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  Logout
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

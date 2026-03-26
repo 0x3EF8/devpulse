@@ -1,14 +1,20 @@
 import { createClient } from "../../../lib/supabase/server";
-import LeaderboardTable, { NonNullableMember } from "../../../components/LeaderboardTable";
+import LeaderboardTable, {
+  NonNullableMember,
+} from "../../../components/LeaderboardTable";
 import LeaderboardHeader from "@/app/components/leaderboard/Header";
 import Footer from "@/app/components/layout/Footer";
 import CTA from "@/app/components/layout/CTA";
+import { getUserWithProfile } from "@/app/lib/supabase/help/user";
 
 export default async function LeaderboardPage(props: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await props.params;
-  const supabase = await createClient();
+  const [{ user }, { slug }, supabase] = await Promise.all([
+    getUserWithProfile(),
+    props.params,
+    createClient(),
+  ]);
 
   const { data: leaderboard } = await supabase
     .from("leaderboards")
@@ -31,10 +37,6 @@ export default async function LeaderboardPage(props: {
     .from("leaderboard_members_view")
     .select("*")
     .eq("leaderboard_id", leaderboard.id);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const isOwner = user?.id === leaderboard.owner_id;
 

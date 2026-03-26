@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import { toast } from "react-toastify";
 import type { User } from "@supabase/supabase-js";
+import Image from "next/image";
 
 export default function UserProfile({ user }: { user: User }) {
   const supabase = createClient();
@@ -12,6 +13,11 @@ export default function UserProfile({ user }: { user: User }) {
   );
   const [name, setName] = useState(originalName);
   const [loading, setLoading] = useState(false);
+  const prefferedAvatar =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    user?.user_metadata?.avatar ||
+    null;
 
   const isEdited = name !== originalName;
 
@@ -55,6 +61,14 @@ export default function UserProfile({ user }: { user: User }) {
       <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-5">
         Profile
       </h3>
+
+      <Image
+        src={prefferedAvatar}
+        alt="User Avatar"
+        width={80}
+        height={80}
+        className="rounded-full mb-4"
+      />
 
       <label className="text-sm text-gray-400 font-medium">Email</label>
       <input

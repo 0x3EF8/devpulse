@@ -18,6 +18,11 @@ export default async function Dashboard() {
 
   const email = profile?.email || user.email!;
   const name = user?.user_metadata?.name || email.split("@")[0];
+  const prefferedAvatar =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    user?.user_metadata?.avatar ||
+    null;
 
-  return <Stats name={name} email={email} />;
+  return <Stats name={name} email={email} avatar={prefferedAvatar} />;
 }
