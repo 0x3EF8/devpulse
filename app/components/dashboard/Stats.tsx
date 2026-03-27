@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AOS from "aos";
 import "devicon/devicon.min.css";
 import { toast } from "react-toastify";
@@ -59,24 +59,47 @@ export default function Stats({
     best_day: { date: "", total_seconds: 0 },
   });
 
-  const fetchStats = () => {
-    fetch("/api/wakatime/sync")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setStats(data.data);
-        } else {
-          toast.error(
-            data.error || "Failed to fetch stats. Please try syncing again.",
-          );
-        }
-        setSyncing(false);
-      });
-  };
+  const fetchStats = useCallback(async () => {
+    setSyncing(true);
+
+    const cached = sessionStorage.getItem("wakatimeStats");
+    const cacheTime = Number(sessionStorage.getItem("wakatimeStatsTime"));
+    const now = Date.now();
+
+    if (cached && cacheTime && now - cacheTime < 1000 * 60 * 5) {
+      setStats(JSON.parse(cached));
+      setSyncing(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/wakatime/sync");
+      const data = await res.json();
+
+      if (data.success) {
+        setStats(data.data);
+
+        sessionStorage.setItem("wakatimeStats", JSON.stringify(data.data));
+        sessionStorage.setItem("wakatimeStatsTime", now.toString());
+      } else {
+        toast.error(
+          data.error || "Failed to fetch stats. Please try syncing again.",
+        );
+      }
+    } catch (err) {
+      toast.error("Network error. Please try again.");
+    }
+
+    setSyncing(false);
+  }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    const run = async () => {
+      await fetchStats();
+    };
+
+    run();
+  }, [fetchStats]);
 
   useEffect(() => {
     if (!syncing) {
