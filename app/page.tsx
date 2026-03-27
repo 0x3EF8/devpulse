@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "./lib/supabase/server";
 import Footer from "./components/layout/Footer";
 import CTA from "./components/layout/CTA";
@@ -11,6 +10,7 @@ import TopLeaderboard, {
 } from "./components/landing-page/TopLeaderbord";
 import ContributeCard from "./components/landing-page/ContributeCard";
 import VibeCoders from "./components/landing-page/VibeCoders";
+import Nav from "./components/layout/Nav";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -115,45 +115,7 @@ export default async function Home() {
       />
 
       <div className="min-h-screen bg-[#0a0a1a] text-white overflow-hidden grid-bg relative">
-        {/* Header / Nav */}
-        <header className="absolute top-0 w-full z-50">
-          <div className="max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
-            <Link
-              href="/"
-              className="flex items-center gap-3 hover:opacity-80 transition"
-              data-aos="fade-down"
-            >
-              <Image
-                src="/logo.svg"
-                alt="DevPulse Logo"
-                width={36}
-                height={36}
-              />
-              <span className="text-xl font-bold tracking-tight text-white">
-                DevPulse
-              </span>
-            </Link>
-
-            <div
-              className="flex items-center gap-6 text-sm font-medium"
-              data-aos="fade-down"
-              data-aos-delay="100"
-            >
-              <Link
-                href="/login"
-                className="text-gray-300 hover:text-white transition"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/5 px-6 py-2.5 rounded-full transition-all shadow-lg backdrop-blur-md"
-              >
-                Sign up
-              </Link>
-            </div>
-          </div>
-        </header>
+        <Nav />
 
         {/* Hero Section */}
         <section className="relative max-w-7xl mx-auto px-6 pt-32 lg:pt-40 pb-20 lg:pb-32 flex flex-col lg:flex-row items-center gap-16 min-h-[85vh]">

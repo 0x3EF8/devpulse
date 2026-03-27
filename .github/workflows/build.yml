@@ -3,7 +3,7 @@ name: Build Next.js App
 on:
   push:
     branches: ["master"]
-  pull_request:
+  pull_request_target:
     branches: ["master"]
   workflow_dispatch:
 
@@ -26,6 +26,7 @@ jobs:
         run: npm run lint
 
       - name: Generate types from remote
+        if: ${{ secrets.SUPABASE_PROJECT_ID != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
@@ -41,6 +42,7 @@ jobs:
       #     npx supabase db push --project-id ${{ secrets.SUPABASE_PROJECT_ID }}
 
       - name: Create .env file
+        if: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}
         run: |
           echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
@@ -48,4 +50,5 @@ jobs:
           echo "NEXT_PUBLIC_NORTON_SAFEWEB_SITE_VERIFICATION=${{ secrets.NEXT_PUBLIC_NORTON_SAFEWEB_SITE_VERIFICATION }}" >> .env
 
       - name: Build project
+        if: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}
         run: npm run build
