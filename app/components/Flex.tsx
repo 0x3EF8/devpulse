@@ -113,30 +113,30 @@ export default function Flex({ user }: { user: User }) {
   }, [showModal, userFlexes, user.id]);
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 w-full max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div
-        className="relative z-50 flex flex-row justify-between items-center w-full gap-4"
-        data-aos="fade-up"
+        className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4 bg-gray-900/20 p-6 rounded-2xl border border-white/5 shadow-sm"
+        data-aos="fade-down"
       >
         <div className="flex flex-col">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent truncate">
-            Flex
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent truncate flex items-center gap-3">
+            Developer Flexes
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-gray-400 mt-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0"></span>
-            <span className="truncate">
-              Share your flexes with the community
+          <p className="text-sm font-medium text-gray-400 mt-2 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.8)] shrink-0"></span>
+            <span>
+              Showcase your top repository work with the community.
             </span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
           <button
             onClick={() => setShowModal(true)}
-            className="btn-secondary px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap transition-colors rounded-xl"
+            className="w-full sm:w-auto btn-primary px-5 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all flex justify-center items-center gap-2"
           >
-            <FontAwesomeIcon icon={faPlus} className="w-3.5 h-3.5" />
-            Flex
+            <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+            New Flex
           </button>
         </div>
       </div>
@@ -148,73 +148,96 @@ export default function Flex({ user }: { user: User }) {
       )}
 
       {flex && (
-        <div className="fixed p-5 inset-0 flex items-center justify-center bg-black/70 z-50 backdrop-blur-sm">
-          <div className="glass-card p-8">
-            <form onSubmit={handleSubmit}>
-              <h2 className="text-xl font-bold mb-2">{flex.name}</h2>
-              <p>{flex.text}</p>
-
-              <input
-                type="text"
-                value={flex.name || ""}
-                disabled
-                className="w-full mt-4 px-3 py-2 bg-transparent text-gray-100 placeholder:text-gray-500 border border-neutral-800 rounded-xl outline-none"
-              />
-
-              <textarea
-                value={flex.project_description || ""}
-                onChange={(e) =>
-                  setFlex({ ...flex, project_description: e.target.value })
-                }
-                placeholder="Project Description"
-                className="w-full mt-2 px-3 py-2 bg-transparent text-gray-100 placeholder:text-gray-500 border border-neutral-800 rounded-xl outline-none"
-                rows={4}
-              ></textarea>
-
-              <input
-                type="url"
-                value={flex.project_url || ""}
-                onChange={(e) =>
-                  setFlex({ ...flex, project_url: e.target.value })
-                }
-                placeholder="Project URL"
-                className="w-full mt-2 px-3 py-2 bg-transparent text-gray-100 placeholder:text-gray-500 border border-neutral-800 rounded-xl outline-none"
-              />
-
-              <div className="flex items-center mt-2 space-x-2">
-                <input
-                  type="checkbox"
-                  checked={flex.is_open_source || false}
-                  onChange={(e) =>
-                    setFlex({ ...flex, is_open_source: e.target.checked })
-                  }
-                  className="rounded bg-neutral-800"
-                />
-                <label>Open Source?</label>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-[100] backdrop-blur-md p-4">
+          <div className="glass-card p-6 sm:p-8 w-full max-w-lg relative overflow-hidden shadow-2xl border border-white/10" data-aos="zoom-in" data-aos-duration="300">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500"></div>
+            <form onSubmit={handleSubmit} className="relative z-10 flex flex-col gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-1">
+                  Flex: {flex.name}
+                </h2>
+                <p className="text-sm text-gray-400">{flex.text}</p>
               </div>
 
-              {flex.is_open_source && (
-                <input
-                  type="url"
-                  value={flex.open_source_url || ""}
-                  onChange={(e) =>
-                    setFlex({ ...flex, open_source_url: e.target.value })
-                  }
-                  placeholder="Open Source URL"
-                  className="w-full mt-2 px-3 py-2 bg-transparent text-gray-100 placeholder:text-gray-500 border border-neutral-800 rounded-xl outline-none"
-                />
-              )}
+              <div className="space-y-4 mt-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Project Name</label>
+                  <input
+                    type="text"
+                    value={flex.name || ""}
+                    disabled
+                    className="w-full px-4 py-2.5 bg-gray-900/50 text-gray-400 border border-gray-800 rounded-xl outline-none cursor-not-allowed"
+                  />
+                </div>
 
-              <div className="flex justify-end mt-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Description</label>
+                  <textarea
+                    value={flex.project_description || ""}
+                    onChange={(e) =>
+                      setFlex({ ...flex, project_description: e.target.value })
+                    }
+                    placeholder="What makes this project awesome?"
+                    className="w-full px-4 py-2.5 bg-gray-900/50 text-gray-100 placeholder:text-gray-600 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all resize-none"
+                    rows={3}
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Live URL</label>
+                  <input
+                    type="url"
+                    value={flex.project_url || ""}
+                    onChange={(e) =>
+                      setFlex({ ...flex, project_url: e.target.value })
+                    }
+                    placeholder="https://your-project.com"
+                    className="w-full px-4 py-2.5 bg-gray-900/50 text-gray-100 placeholder:text-gray-600 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl border border-gray-800/50">
+                  <input
+                    type="checkbox"
+                    id="is_open_source"
+                    checked={flex.is_open_source || false}
+                    onChange={(e) =>
+                      setFlex({ ...flex, is_open_source: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-gray-900 bg-gray-700"
+                  />
+                  <label htmlFor="is_open_source" className="text-sm font-medium text-gray-300 cursor-pointer select-none">
+                    Is this project open source?
+                  </label>
+                </div>
+
+                {flex.is_open_source && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-xs font-semibold text-emerald-500/80 uppercase tracking-wider mb-1 block">Repository URL</label>
+                    <input
+                      type="url"
+                      value={flex.open_source_url || ""}
+                      onChange={(e) =>
+                        setFlex({ ...flex, open_source_url: e.target.value })
+                      }
+                      placeholder="https://github.com/..."
+                      className="w-full px-4 py-2.5 bg-emerald-900/10 text-gray-100 placeholder:text-emerald-900/40 border border-emerald-900/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl outline-none transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-800/80">
                 <button
+                  type="button"
                   onClick={() => setFlex(null)}
-                  className="mt-4 btn-secondary px-4 py-2 text-sm rounded-xl me-2"
+                  className="px-5 py-2.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-700/50 rounded-xl transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="mt-4 btn-primary px-4 py-2 text-sm rounded-xl"
+                  className="btn-primary px-6 py-2.5 text-sm font-medium rounded-xl shadow-lg shadow-indigo-500/20"
                 >
                   Submit Flex
                 </button>
@@ -225,9 +248,13 @@ export default function Flex({ user }: { user: User }) {
       )}
 
       {userFlexes.length === 0 && !loading && (
-        <div className="p-6 flex items-center justify-center">
-          <p className="text-gray-400">
-            You have no flexes yet. Start by sharing your first project!
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-900/20 border border-dashed border-gray-800 rounded-2xl" data-aos="fade-in">
+          <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 text-indigo-400">
+             <FontAwesomeIcon icon={faCode} className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">No Flexes Yet</h3>
+          <p className="text-gray-400 max-w-md mx-auto mb-6">
+            You haven&apos;t shared any of your projects yet. Hit &quot;New Flex&quot; to show off your best work to the DevPulse community!
           </p>
         </div>
       )}
@@ -235,66 +262,76 @@ export default function Flex({ user }: { user: User }) {
       {userFlexes.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {userFlexes.map((f) => (
-            <div key={f.id} className="glass-card p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">{f.project_name}</h3>
-                <span className="text-sm">
-                  <FontAwesomeIcon
-                    icon={faClock}
-                    className="w-3 h-3 text-gray-400 me-1"
-                  />
+            <div key={f.id} className="glass-card p-6 flex flex-col group relative overflow-hidden flex-1 hover:border-indigo-500/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="flex items-start justify-between mb-4 relative z-10">
+                <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors truncate pr-4">{f.project_name}</h3>
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold whitespace-nowrap shrink-0">
+                  <FontAwesomeIcon icon={faClock} className="w-3 h-3" />
                   {f.project_time}
                 </span>
               </div>
-              <p className="text-sm text-gray-400">{f.project_description}</p>
-              <a
-                className="text-sm text-gray-400 truncate"
-                href={f.project_url}
-                title="Click to view project"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <FontAwesomeIcon
-                  icon={faExternalLink}
-                  className="w-3 h-3 text-gray-400 me-1"
-                />
-                {f.project_url}
-              </a>
-              {f.is_open_source && (
+              <p className="text-sm text-gray-400 mb-6 flex-1 relative z-10 leading-relaxed line-clamp-3">{f.project_description}</p>
+              
+              <div className="flex flex-col gap-3 relative z-10 mt-auto">
                 <a
-                  className="text-sm text-green-400 truncate"
-                  href={f.open_source_url}
+                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors p-2 rounded-lg bg-gray-800/30 hover:bg-gray-800/60 w-fit"
+                  href={f.project_url}
+                  title="Click to view project"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  <FontAwesomeIcon
-                    icon={faCode}
-                    className="w-3 h-3 text-green-400 me-1"
-                  />
-                  {f.open_source_url}
+                  <FontAwesomeIcon icon={faExternalLink} className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[200px]">{f.project_url.replace(/^https?:\/\//, '')}</span>
                 </a>
-              )}
-              <span className="text-xs">
-                Expires in {expireAt(f.expires_at || "")} • Posted{" "}
-                {timeAgo(f.created_at)}
-              </span>
+                
+                {f.is_open_source && (
+                  <a
+                    className="flex items-center gap-2 text-sm text-emerald-400/80 hover:text-emerald-400 transition-colors p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 w-fit"
+                    href={f.open_source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <FontAwesomeIcon icon={faCode} className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-[200px]">Repository</span>
+                  </a>
+                )}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-800/50 flex items-center justify-between text-xs text-gray-500 relative z-10">
+                <span>Posted {timeAgo(f.created_at)}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400/80 animate-pulse"></span>
+                  Expires in {expireAt(f.expires_at || "")}
+                </span>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50 backdrop-blur-sm">
-          <div className="glass-card p-8">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search projects..."
-              className="w-full mb-3 px-3 py-2 bg-transparent text-gray-100 placeholder:text-gray-500 border border-neutral-800 rounded-xl outline-none"
-            />
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-[100] backdrop-blur-md p-4">
+          <div className="glass-card p-6 sm:p-8 w-full max-w-lg border border-white/10 shadow-2xl relative overflow-hidden" data-aos="zoom-in" data-aos-duration="300">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500"></div>
+            <h2 className="text-xl font-bold mb-4 text-white">Select a Project</h2>
+            <div className="relative mb-4">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search projects..."
+                className="w-full px-4 py-3 bg-gray-900/50 text-gray-100 placeholder:text-gray-600 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all pl-11"
+              />
+              <svg className="w-5 h-5 absolute left-4 top-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
               {flexes.length === 0 && !loading && (
-                <p className="text-gray-400 text-sm text-center">
-                  You have no projects to flex yet.
-                </p>
+                <div className="p-8 flex flex-col items-center justify-center text-center border border-dashed border-gray-800 rounded-xl bg-gray-900/20">
+                  <p className="text-gray-400 text-sm">
+                    You have no projects to flex yet.
+                  </p>
+                </div>
               )}
 
               {flexes
@@ -308,22 +345,23 @@ export default function Flex({ user }: { user: User }) {
                       setFlex(u);
                       setShowModal(false);
                     }}
-                    className="flex items-center gap-3 p-2 rounded hover:bg-neutral-800 cursor-pointer"
+                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-800/60 border border-transparent hover:border-gray-700 cursor-pointer transition-all group"
                   >
-                    <div className="flex justify-center items-center w-10 h-8 rounded-full bg-neutral-600">
+                    <div className="flex justify-center items-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 font-bold border border-indigo-500/20 group-hover:scale-105 transition-transform">
                       {u.name[0].toUpperCase()}
                     </div>
-                    <div className="w-full flex flex-col">
-                      <span>{u.name}</span>
-                      <span>{u.text}</span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-200 group-hover:text-white truncate transition-colors">{u.name}</h4>
+                      <p className="text-xs text-gray-500 truncate">{u.text}</p>
                     </div>
                   </div>
                 ))}
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-800/80">
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="mt-4 btn-secondary px-4 py-2 text-sm rounded-xl me-2"
+                className="px-5 py-2.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-700/50 rounded-xl transition-all"
               >
                 Cancel
               </button>
