@@ -195,11 +195,6 @@ export default function Player({
     return { menuCenterX, arrowX };
   };
 
-  const hideHint = () => {
-    if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
-    setActiveHint(null);
-    setHintPos(null);
-  };
 
   useLayoutEffect(() => {
     if (!showSettings) return;
