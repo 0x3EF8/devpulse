@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faDownload,
@@ -64,9 +71,11 @@ export default function Player({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMobileVolume, setShowMobileVolume] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
-  const [hintPos, setHintPos] = useState<{ x: number; y: number; below: boolean } | null>(
-    null,
-  );
+  const [hintPos, setHintPos] = useState<{
+    x: number;
+    y: number;
+    below: boolean;
+  } | null>(null);
   const [settingsMenuX, setSettingsMenuX] = useState<number | null>(null);
   const [settingsArrowX, setSettingsArrowX] = useState<number | null>(null);
   const hintTimeoutRef = useRef<number | null>(null);
@@ -94,8 +103,9 @@ export default function Player({
       if (video.videoWidth > 0 && video.videoHeight > 0) {
         setVideoRatio(video.videoWidth / video.videoHeight);
         const detected =
-          [2160, 1440, 1080, 720, 480, 360].find((q) => video.videoHeight >= q) ??
-          Math.max(144, Math.round(video.videoHeight / 10) * 10);
+          [2160, 1440, 1080, 720, 480, 360].find(
+            (q) => video.videoHeight >= q,
+          ) ?? Math.max(144, Math.round(video.videoHeight / 10) * 10);
         setDetectedQuality(`${detected}p`);
       }
     };
@@ -120,7 +130,8 @@ export default function Player({
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
     syncFullscreen();
-    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+    return () =>
+      document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
   useEffect(() => {
@@ -147,10 +158,12 @@ export default function Player({
   }, [playing, showUi, currentTime, isSeeking]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    if (!showUi) setShowSettings(false);
-    // eslint-disable-next-line
-    if (!showUi) setShowMobileVolume(false);
+    const showUiFunction = () => {
+      if (!showUi) setShowSettings(false);
+      if (!showUi) setShowMobileVolume(false);
+    };
+
+    showUiFunction();
   }, [showUi]);
 
   const computeAnchoredMenu = (
@@ -161,13 +174,20 @@ export default function Player({
     if (!wrap || !triggerEl || !menuEl) return null;
     const wrapRect = wrap.getBoundingClientRect();
     const triggerRect = triggerEl.getBoundingClientRect();
-    const triggerCenterX = triggerRect.left - wrapRect.left + triggerRect.width / 2;
+    const triggerCenterX =
+      triggerRect.left - wrapRect.left + triggerRect.width / 2;
 
     const menuWidth = menuEl.offsetWidth || 210;
     const edgePad = 8;
     const minCenter = menuWidth / 2 + edgePad;
-    const maxCenter = Math.max(minCenter, wrapRect.width - menuWidth / 2 - edgePad);
-    const menuCenterX = Math.min(maxCenter, Math.max(minCenter, triggerCenterX));
+    const maxCenter = Math.max(
+      minCenter,
+      wrapRect.width - menuWidth / 2 - edgePad,
+    );
+    const menuCenterX = Math.min(
+      maxCenter,
+      Math.max(minCenter, triggerCenterX),
+    );
     const arrowX = Math.min(
       menuWidth - 12,
       Math.max(12, triggerCenterX - (menuCenterX - menuWidth / 2)),
@@ -175,17 +195,28 @@ export default function Player({
     return { menuCenterX, arrowX };
   };
 
+  const hideHint = () => {
+    if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
+    setActiveHint(null);
+    setHintPos(null);
+  };
+
   useLayoutEffect(() => {
     if (!showSettings) return;
     const update = () => {
-      const pos = computeAnchoredMenu(settingsBtnRef.current, settingsMenuRef.current);
+      const pos = computeAnchoredMenu(
+        settingsBtnRef.current,
+        settingsMenuRef.current,
+      );
       if (!pos) return;
       setSettingsMenuX(pos.menuCenterX);
       setSettingsArrowX(pos.arrowX);
     };
     update();
     const rafA = window.requestAnimationFrame(update);
-    const rafB = window.requestAnimationFrame(() => window.requestAnimationFrame(update));
+    const rafB = window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(update),
+    );
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
     return () => {
@@ -197,15 +228,24 @@ export default function Player({
   }, [showSettings]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    if (showSettings) hideHint();
+    const hideFunction = () => {
+      if (showSettings) hideHint();
+    };
+    hideFunction();
   }, [showSettings]);
 
   useEffect(() => {
-    if (quality !== "Auto" && detectedQuality && quality !== detectedQuality) {
-      // eslint-disable-next-line
-      setQuality(detectedQuality);
-    }
+    const qualityFunction = () => {
+      if (
+        quality !== "Auto" &&
+        detectedQuality &&
+        quality !== detectedQuality
+      ) {
+        setQuality(detectedQuality);
+      }
+    };
+
+    qualityFunction();
   }, [quality, detectedQuality]);
 
   useEffect(() => {
@@ -214,7 +254,9 @@ export default function Player({
     if (!video || !ambient || !ambientBackground) return;
 
     const syncTime = () => {
-      if (Math.abs((ambient.currentTime || 0) - (video.currentTime || 0)) > 0.08) {
+      if (
+        Math.abs((ambient.currentTime || 0) - (video.currentTime || 0)) > 0.08
+      ) {
         ambient.currentTime = video.currentTime || 0;
       }
     };
@@ -262,12 +304,24 @@ export default function Player({
     const onEnterPip = () => setIsPipActive(true);
     const onLeavePip = () => setIsPipActive(false);
 
-    video.addEventListener("enterpictureinpicture", onEnterPip as EventListener);
-    video.addEventListener("leavepictureinpicture", onLeavePip as EventListener);
+    video.addEventListener(
+      "enterpictureinpicture",
+      onEnterPip as EventListener,
+    );
+    video.addEventListener(
+      "leavepictureinpicture",
+      onLeavePip as EventListener,
+    );
 
     return () => {
-      video.removeEventListener("enterpictureinpicture", onEnterPip as EventListener);
-      video.removeEventListener("leavepictureinpicture", onLeavePip as EventListener);
+      video.removeEventListener(
+        "enterpictureinpicture",
+        onEnterPip as EventListener,
+      );
+      video.removeEventListener(
+        "leavepictureinpicture",
+        onLeavePip as EventListener,
+      );
     };
   }, []);
 
@@ -303,7 +357,9 @@ export default function Player({
 
   const togglePictureInPicture = async () => {
     const video = videoRef.current as
-      | (HTMLVideoElement & { requestPictureInPicture?: () => Promise<unknown> })
+      | (HTMLVideoElement & {
+          requestPictureInPicture?: () => Promise<unknown>;
+        })
       | null;
     if (!video || typeof document === "undefined") return;
 
@@ -347,7 +403,10 @@ export default function Player({
   };
 
   const getVolumeHintLabel = () => {
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
       return "Volume";
     }
     return muted ? "Unmute" : "Mute";
@@ -373,7 +432,9 @@ export default function Player({
     <div
       ref={wrapRef}
       className={`relative group/player overflow-hidden ${
-        immersive ? "rounded-none border-0 bg-black shadow-none" : "rounded-xl border border-white/10 bg-[#05050a] shadow-2xl"
+        immersive
+          ? "rounded-none border-0 bg-black shadow-none"
+          : "rounded-xl border border-white/10 bg-[#05050a] shadow-2xl"
       } ${className}`}
       style={frameStyle}
     >
@@ -415,7 +476,10 @@ export default function Player({
           showUi ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >
-        <FontAwesomeIcon icon={playing ? faPause : faPlay} className="w-4 h-4" />
+        <FontAwesomeIcon
+          icon={playing ? faPause : faPlay}
+          className="w-4 h-4"
+        />
       </button>
 
       {(onDownload || onClose) && (
@@ -433,9 +497,13 @@ export default function Player({
                 setShowSettings(false);
                 onDownload();
               }}
-              onMouseEnter={(e) => showHint("Download", e.currentTarget, "below")}
+              onMouseEnter={(e) =>
+                showHint("Download", e.currentTarget, "below")
+              }
               onMouseLeave={hideHint}
-              onTouchStart={(e) => showHint("Download", e.currentTarget, "below")}
+              onTouchStart={(e) =>
+                showHint("Download", e.currentTarget, "below")
+              }
               className="w-8 h-8 rounded-md text-white/90 hover:text-white transition"
               aria-label="Download video"
             >
@@ -478,13 +546,20 @@ export default function Player({
                 setShowSettings(false);
                 void togglePlay();
               }}
-              onMouseEnter={(e) => showHint(playing ? "Pause" : "Play", e.currentTarget)}
+              onMouseEnter={(e) =>
+                showHint(playing ? "Pause" : "Play", e.currentTarget)
+              }
               onMouseLeave={hideHint}
-              onTouchStart={(e) => showHint(playing ? "Pause" : "Play", e.currentTarget)}
+              onTouchStart={(e) =>
+                showHint(playing ? "Pause" : "Play", e.currentTarget)
+              }
               className="w-8 h-8 rounded-md text-white/90 hover:text-white transition"
               aria-label={playing ? "Pause" : "Play"}
             >
-              <FontAwesomeIcon icon={playing ? faPause : faPlay} className="w-3 h-3" />
+              <FontAwesomeIcon
+                icon={playing ? faPause : faPlay}
+                className="w-3 h-3"
+              />
             </button>
 
             <input
@@ -543,12 +618,8 @@ export default function Player({
               </button>
 
               {showUi && showMobileVolume && (
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-40 md:hidden rounded-lg border border-white/15 bg-black/75 backdrop-blur-md px-2 py-2"
-                >
-                  <span
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-black/75 border-r border-b border-white/15"
-                  />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-40 md:hidden rounded-lg border border-white/15 bg-black/75 backdrop-blur-md px-2 py-2">
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-black/75 border-r border-b border-white/15" />
                   <div className="flex flex-col items-center gap-2">
                     <button
                       type="button"
@@ -589,7 +660,7 @@ export default function Player({
             />
 
             <button
-                ref={settingsBtnRef}
+              ref={settingsBtnRef}
               type="button"
               onClick={() => {
                 hideHint();
@@ -616,9 +687,13 @@ export default function Player({
                 setShowSettings(false);
                 void togglePictureInPicture();
               }}
-              onMouseEnter={(e) => showHint("Picture in Picture", e.currentTarget)}
+              onMouseEnter={(e) =>
+                showHint("Picture in Picture", e.currentTarget)
+              }
               onMouseLeave={hideHint}
-              onTouchStart={(e) => showHint("Picture in Picture", e.currentTarget)}
+              onTouchStart={(e) =>
+                showHint("Picture in Picture", e.currentTarget)
+              }
               className="w-8 h-8 rounded-md text-white/90 hover:text-white transition"
               aria-label="Picture in picture"
             >
@@ -636,11 +711,17 @@ export default function Player({
                 void toggleFullscreen();
               }}
               onMouseEnter={(e) =>
-                showHint(isFullscreen ? "Exit fullscreen" : "Fullscreen", e.currentTarget)
+                showHint(
+                  isFullscreen ? "Exit fullscreen" : "Fullscreen",
+                  e.currentTarget,
+                )
               }
               onMouseLeave={hideHint}
               onTouchStart={(e) =>
-                showHint(isFullscreen ? "Exit fullscreen" : "Fullscreen", e.currentTarget)
+                showHint(
+                  isFullscreen ? "Exit fullscreen" : "Fullscreen",
+                  e.currentTarget,
+                )
               }
               className="w-8 h-8 rounded-md text-white/90 hover:text-white transition"
               aria-label="Fullscreen"
@@ -716,20 +797,22 @@ export default function Player({
               Quality
             </div>
             <div className="flex items-center gap-1 px-2 pb-1">
-              {["Auto", ...(detectedQuality ? [detectedQuality] : [])].map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => setQuality(q)}
-                  className={`px-2 py-1 rounded text-[10px] transition ${
-                    quality === q
-                      ? "bg-white/20 text-white"
-                      : "bg-white/5 text-gray-300 hover:bg-white/10"
-                  }`}
-                >
-                  {q}
-                </button>
-              ))}
+              {["Auto", ...(detectedQuality ? [detectedQuality] : [])].map(
+                (q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setQuality(q)}
+                    className={`px-2 py-1 rounded text-[10px] transition ${
+                      quality === q
+                        ? "bg-white/20 text-white"
+                        : "bg-white/5 text-gray-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ),
+              )}
             </div>
             <div className="px-2 pb-1 text-[10px] text-gray-500">
               {detectedQuality
@@ -739,7 +822,6 @@ export default function Player({
           </div>
         </div>
       )}
-
     </div>
   );
 }

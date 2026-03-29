@@ -6,11 +6,6 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons/faGoogle";
-import { faMicrosoft } from "@fortawesome/free-brands-svg-icons/faMicrosoft";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import Image from "next/image";
 
 export default function LoginForm() {
   const supabase = createClient();
@@ -122,7 +117,7 @@ export default function LoginForm() {
           <span className="text-sm text-gray-500">Or continue with</span>
         </div>
 
-        <div className="flex flex-row-321 space-x-3">
+        <div className="flex flex-row-321 gap-3">
           <button
             type="button"
             onClick={handleGoogleSignIn}

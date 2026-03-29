@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-
+import { useCallback, useEffect, useState } from "react";
 import AOS from "aos";
 import "devicon/devicon.min.css";
 import { toast } from "react-toastify";
@@ -15,9 +13,8 @@ import OperatingSystem from "./widgets/OperatingSystem";
 import Projects from "./widgets/Projects";
 import Machines from "./widgets/Machines";
 import Categories from "./widgets/Categories";
-
 import Dependencies from "./widgets/Dependencies";
-import Image from "next/image";
+import ProfileDropdown from "../ProfileDropdown";
 
 export interface StatsData {
   total_seconds: number;
@@ -47,22 +44,6 @@ export default function Stats({
 }: StatsProps) {
   const [syncing, setSyncing] = useState(false);
   const [animated, setAnimated] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
-
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        profileRef.current &&
-        !profileRef.current.contains(event.target as Node)
-      ) {
-        setProfileOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const [stats, setStats] = useState<StatsData>({
     total_seconds: 0,
@@ -78,24 +59,47 @@ export default function Stats({
     best_day: { date: "", total_seconds: 0 },
   });
 
-  const fetchStats = () => {
-    fetch("/api/wakatime/sync")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setStats(data.data);
-        } else {
-          toast.error(
-            data.error || "Failed to fetch stats. Please try syncing again.",
-          );
-        }
-        setSyncing(false);
-      });
-  };
+  const fetchStats = useCallback(async () => {
+    setSyncing(true);
+
+    const cached = sessionStorage.getItem("wakatimeStats");
+    const cacheTime = Number(sessionStorage.getItem("wakatimeStatsTime"));
+    const now = Date.now();
+
+    if (cached && cacheTime && now - cacheTime < 1000 * 60 * 5) {
+      setStats(JSON.parse(cached));
+      setSyncing(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/wakatime/sync");
+      const data = await res.json();
+
+      if (data.success) {
+        setStats(data.data);
+
+        sessionStorage.setItem("wakatimeStats", JSON.stringify(data.data));
+        sessionStorage.setItem("wakatimeStatsTime", now.toString());
+      } else {
+        toast.error(
+          data.error || "Failed to fetch stats. Please try syncing again.",
+        );
+      }
+    } catch (err) {
+      toast.error("Network error. Please try again.");
+    }
+
+    setSyncing(false);
+  }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    const run = async () => {
+      await fetchStats();
+    };
+
+    run();
+  }, [fetchStats]);
 
   useEffect(() => {
     if (!syncing) {
@@ -264,103 +268,7 @@ export default function Stats({
             </svg>
           </button>
 
-          {/* Profile Section */}
-          <div
-            className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-800/80 cursor-pointer group"
-            ref={profileRef}
-            onClick={() => setProfileOpen(!profileOpen)}
-          >
-            {avatar ? (
-              <Image
-                src={avatar}
-                alt="Profile Avatar"
-                width={32}
-                height={32}
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                {email.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors hidden sm:block">
-              {name}
-            </span>
-            <svg
-              className={`w-4 h-4 text-gray-500 group-hover:text-white transition-transform duration-200 hidden sm:block ${profileOpen ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-
-            {/* Dropdown Menu */}
-            {profileOpen && (
-              <div
-                className="absolute right-0 top-full mt-3 w-48 rounded-xl glass-card py-2 shadow-xl border border-gray-800/60 z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="px-4 py-2 border-b border-gray-800/60 mb-2 md:hidden">
-                  <p className="text-sm font-medium text-white truncate">
-                    {name}
-                  </p>
-                  <p className="text-[10px] text-gray-500 truncate">{email}</p>
-                </div>
-                <Link
-                  href="/dashboard/settings"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.03] transition-colors"
-                  onClick={() => setProfileOpen(false)}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  Settings
-                </Link>
-                <Link
-                  href="/logout"
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors mt-1"
-                  onClick={() => setProfileOpen(false)}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
-                  Logout
-                </Link>
-              </div>
-            )}
-          </div>
+          <ProfileDropdown avatar={avatar} name={name} email={email} />
         </div>
       </div>
 
