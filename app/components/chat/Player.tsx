@@ -421,7 +421,7 @@ export default function Player({
       maxWidth: "1100px",
       maxHeight: "78vh",
     };
-  }, [videoRatio]);
+  }, [immersive, videoRatio]);
 
   return (
     <div

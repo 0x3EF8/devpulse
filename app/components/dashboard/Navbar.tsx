@@ -29,10 +29,19 @@ import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
 const supabase = createClient();
 
-const SidebarContext = createContext({
+type SidebarContextValue = {
+  collapsed: boolean;
+  mobileHidden: boolean;
+  setMobileHidden: (value: boolean) => void;
+  isMobile: boolean;
+};
+
+const noopSetMobileHidden: SidebarContextValue["setMobileHidden"] = () => {};
+
+const SidebarContext = createContext<SidebarContextValue>({
   collapsed: false,
   mobileHidden: false,
-  setMobileHidden: (_value: boolean) => {},
+  setMobileHidden: noopSetMobileHidden,
   isMobile: false,
 });
 
