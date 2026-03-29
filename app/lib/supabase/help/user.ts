@@ -1,7 +1,6 @@
-import { cache } from "react";
 import { createClient } from "../server";
 
-export const getUserWithProfile = cache(async () => {
+export async function getUserWithProfile() {
   const supabase = await createClient();
 
   const {
@@ -17,4 +16,4 @@ export const getUserWithProfile = cache(async () => {
     .single();
 
   return { user, profile };
-});
+}

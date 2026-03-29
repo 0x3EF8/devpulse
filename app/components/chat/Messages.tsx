@@ -28,12 +28,14 @@ export default function Messages({
   conversations,
   bottomRef,
   badgesByUserId,
+  onUserProfileClick,
 }: {
   messages: Message[];
   user: User;
   conversations: Conversation[];
   bottomRef: React.RefObject<HTMLDivElement | null>;
   badgesByUserId?: Record<string, { label: string; className: string; icon?: IconDefinition }>;
+  onUserProfileClick?: (targetUserId: string, targetEmail: string) => void;
 }) {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [mediaViewer, setMediaViewer] = useState<{
@@ -220,6 +222,10 @@ export default function Messages({
 
           const senderInitial = senderRow?.email?.[0]?.toUpperCase() ?? "?";
           const senderName = senderRow?.email?.split("@")?.[0] ?? "";
+          const canOpenPrivateChat =
+            !isSelf &&
+            conversationRow?.type === "global" &&
+            !!senderRow?.email;
 
           const badge = badgesByUserId?.[msg.sender_id];
           const badgeLabel = badge?.label ?? "NEWBIE";
@@ -258,7 +264,24 @@ export default function Messages({
             >
               {!isSelf && (
                 <div
-                  className={`flex-shrink-0 ${avatarTranslateClass} w-8 h-8 rounded-full bg-neutral-700 border border-white/10 flex items-center justify-center aspect-square overflow-hidden`}
+                  role={canOpenPrivateChat ? "button" : undefined}
+                  tabIndex={canOpenPrivateChat ? 0 : undefined}
+                  onClick={() => {
+                    if (!canOpenPrivateChat || !senderRow?.email) return;
+                    onUserProfileClick?.(msg.sender_id, senderRow.email);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!canOpenPrivateChat || !senderRow?.email) return;
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    onUserProfileClick?.(msg.sender_id, senderRow.email);
+                  }}
+                  title={canOpenPrivateChat ? "Start private chat" : undefined}
+                  className={`flex-shrink-0 ${avatarTranslateClass} w-8 h-8 rounded-full bg-neutral-700 border border-white/10 flex items-center justify-center aspect-square overflow-hidden ${
+                    canOpenPrivateChat
+                      ? "cursor-pointer hover:border-indigo-400/60 hover:bg-neutral-700/80"
+                      : ""
+                  }`}
                 >
                   <span className="text-xs font-semibold leading-none text-gray-200">
                     {senderInitial}
@@ -277,13 +300,24 @@ export default function Messages({
                       {timeAgo(msg.created_at)}
                     </span>
                   )}
-                <span
-                  className={`text-[12px] font-semibold leading-none ${
-                    isSelf ? "text-indigo-300" : "text-gray-200"
-                  }`}
-                >
-                  {senderName}
-                </span>
+                {canOpenPrivateChat && senderRow?.email ? (
+                  <button
+                    type="button"
+                    onClick={() => onUserProfileClick?.(msg.sender_id, senderRow.email as string)}
+                    className="text-[12px] font-semibold leading-none text-gray-200 hover:text-indigo-300 transition"
+                    title="Start private chat"
+                  >
+                    {senderName}
+                  </button>
+                ) : (
+                  <span
+                    className={`text-[12px] font-semibold leading-none ${
+                      isSelf ? "text-indigo-300" : "text-gray-200"
+                    }`}
+                  >
+                    {senderName}
+                  </span>
+                )}
                 <span
                   className={`badge-base shrink-0 !text-[9px] !py-0.5 !px-2 ${badgePillClass}`}
                 >

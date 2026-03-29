@@ -3,7 +3,6 @@ CREATE TABLE conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at timestamptz DEFAULT now()
 );
-
 /* ---- Participants ----- */
 CREATE TABLE conversation_participants (
   conversation_id uuid NOT NULL REFERENCES conversations(id),
@@ -11,7 +10,6 @@ CREATE TABLE conversation_participants (
   email text NOT NULL,
   PRIMARY KEY(conversation_id, user_id)
 );
-
 /* ---- Messages ----- */
 CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -20,9 +18,7 @@ CREATE TABLE messages (
   text text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
 /* ---- RLS Policies ----- */
 CREATE POLICY "participants can read messages" ON messages
 FOR SELECT USING (
@@ -33,7 +29,6 @@ FOR SELECT USING (
       AND user_id = auth.uid()
   )
 );
-
 CREATE POLICY "participants can send messages" ON messages
 FOR INSERT WITH CHECK (
   EXISTS (

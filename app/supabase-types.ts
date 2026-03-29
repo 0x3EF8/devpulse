@@ -18,18 +18,24 @@ export type Database = {
         Row: {
           conversation_id: string
           email: string | null
+          last_read_at: string
+          last_seen_at: string
           type: string
           user_id: string
         }
         Insert: {
           conversation_id: string
           email?: string | null
+          last_read_at?: string
+          last_seen_at?: string
           type?: string
           user_id: string
         }
         Update: {
           conversation_id?: string
           email?: string | null
+          last_read_at?: string
+          last_seen_at?: string
           type?: string
           user_id?: string
         }
@@ -182,6 +188,57 @@ export type Database = {
           id?: string
           role?: string
           wakatime_api_key?: string | null
+        }
+        Relationships: []
+      }
+      user_dashboard_snapshots: {
+        Row: {
+          active_days_7d: number
+          best_streak: number
+          consistency_percent: number
+          created_at: string
+          current_streak: number
+          id: number
+          peak_day: string | null
+          peak_day_seconds: number
+          snapshot_date: string
+          top_language: string | null
+          top_language_percent: number | null
+          total_seconds_7d: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_days_7d?: number
+          best_streak?: number
+          consistency_percent?: number
+          created_at?: string
+          current_streak?: number
+          id?: number
+          peak_day?: string | null
+          peak_day_seconds?: number
+          snapshot_date: string
+          top_language?: string | null
+          top_language_percent?: number | null
+          total_seconds_7d?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_days_7d?: number
+          best_streak?: number
+          consistency_percent?: number
+          created_at?: string
+          current_streak?: number
+          id?: number
+          peak_day?: string | null
+          peak_day_seconds?: number
+          snapshot_date?: string
+          top_language?: string | null
+          top_language_percent?: number | null
+          total_seconds_7d?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

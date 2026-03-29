@@ -1,17 +1,23 @@
 ﻿import { User } from "@supabase/supabase-js";
-import { Conversation } from "../Chat";
+import { Conversation, TypingState } from "../Chat";
 
 export default function Conversations({
   conversations,
   user,
   conversationId,
   setConversationId,
+  unreadCountByConversationId,
+  onlineByUserId,
+  typingByConversationId,
   showLabel = true,
 }: {
   conversations: Conversation[];
   user: User;
   conversationId: string | null;
   setConversationId: (id: string) => void;
+  unreadCountByConversationId?: Record<string, number>;
+  onlineByUserId?: Record<string, boolean>;
+  typingByConversationId?: Record<string, TypingState>;
   showLabel?: boolean;
 }) {
   return (
@@ -20,6 +26,10 @@ export default function Conversations({
         const otherUser = conv.users.find((u) => u.id !== user.id);
         const isActive = conv.id === conversationId;
         const isGlobal = conv.type === "global";
+        const unreadCount = unreadCountByConversationId?.[conv.id] ?? 0;
+        const isOnline = !!otherUser?.id && !!onlineByUserId?.[otherUser.id];
+        const typingState = typingByConversationId?.[conv.id];
+        const isTyping = !!typingState;
         
         let label = "Global Chat";
         let sublabel = "Public Channel";
@@ -53,7 +63,9 @@ export default function Conversations({
               >
                 {initials}
               </div>
-              <div className="absolute bottom-[-1px] right-0 w-2.5 h-2.5 bg-emerald-400 border-[2px] border-transparent rounded-full"></div>
+              {!isGlobal && isOnline && (
+                <div className="absolute bottom-[-1px] right-0 w-2.5 h-2.5 bg-emerald-400 border-[2px] border-transparent rounded-full"></div>
+              )}
             </div>
 
             {showLabel && (
@@ -66,14 +78,34 @@ export default function Conversations({
                   >
                     {label}
                   </span>
-                  {isGlobal && (
-                    <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                      All
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {isGlobal && (
+                      <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                        All
+                      </span>
+                    )}
+                    {unreadCount > 0 && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500/90 text-white text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-[12px] text-gray-500 truncate font-medium" title={sublabel}>
-                  {isGlobal ? "Join the community..." : `Say hi to ${label}...`}
+                <span
+                  className={`text-[12px] truncate font-medium ${
+                    isTyping ? "text-indigo-300" : "text-gray-500"
+                  }`}
+                  title={sublabel}
+                >
+                  {isTyping
+                    ? isGlobal
+                      ? `${typingState?.label || "Someone"} is typing...`
+                      : "Typing..."
+                    : isGlobal
+                      ? "Join the community..."
+                      : isOnline
+                        ? "Online"
+                        : "Offline"}
                 </span>
               </div>
             )}

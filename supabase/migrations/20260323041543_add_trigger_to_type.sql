@@ -5,7 +5,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER conversation_type_trigger
 BEFORE INSERT ON conversation_participants
 FOR EACH ROW

@@ -13,20 +13,16 @@ create table public.user_stats (
   daily_stats jsonb NOT NULL default '[]'::jsonb,
   last_fetched_at timestamp with time zone NOT NULL default now()
 );
-
 alter table public.user_stats enable row level security;
-
 /* ---- RLS Policy ----- */
 create policy "Users can insert their stats"
 on public.user_stats
 for insert
 with check (auth.uid() = user_id);
-
 create policy "Users can update their stats"
 on public.user_stats
 for update
 using (auth.uid() = user_id);
-
 create policy "Authenticated users can view stats"
 on public.user_stats
 for select

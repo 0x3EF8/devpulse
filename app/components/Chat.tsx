@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RealtimeChannel, User } from "@supabase/supabase-js";
 import { createClient } from "../lib/supabase/client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,9 +10,6 @@ import {
   faPaperPlane,
   faPlus,
   faSearch,
-  faEllipsisVertical,
-  faFlag,
-  faLock,
   faGhost,
   faCrown,
   faStar,
@@ -58,6 +55,7 @@ export interface Message {
     public_url: string;
   }[];
   created_at: string;
+  optimistic?: boolean;
 }
 
 export interface ChatUser {
@@ -77,6 +75,59 @@ export interface ConversationParticipantRow {
   conversation: ConversationParticipant[];
 }
 
+interface ParticipantPresence {
+  last_seen_at: string | null;
+  last_read_at: string | null;
+}
+
+interface ConversationUserRow {
+  user_id: string;
+  email: string | null;
+  last_seen_at: string | null;
+}
+
+interface ConversationRowWithParticipants {
+  id: string;
+  created_at: string;
+  type: string;
+  users: ConversationUserRow[];
+}
+
+interface ConversationParticipantWithConversationRow {
+  conversation_id: string;
+  last_seen_at: string | null;
+  last_read_at: string | null;
+  conversation:
+    | ConversationRowWithParticipants
+    | ConversationRowWithParticipants[]
+    | null;
+}
+
+export interface TypingState {
+  user_id: string;
+  label: string;
+}
+
+const GLOBAL_CONVERSATION_ID = "00000000-0000-0000-0000-000000000001";
+const ONLINE_TIMEOUT_MS = 2 * 60 * 1000;
+const MAX_PRESENCE_FUTURE_SKEW_MS = 30_000;
+const PRESENCE_HEARTBEAT_MS = 45_000;
+const READ_RECEIPT_THROTTLE_MS = 1_500;
+const TYPING_INACTIVE_TIMEOUT_MS = 1_800;
+const TYPING_REMOTE_EXPIRE_MS = 2_500;
+const PRESENCE_UNSEEN_AT_ISO = "1970-01-01T00:00:00.000Z";
+
+const getAttachmentFingerprint = (attachments: Message["attachments"] = []) =>
+  attachments
+    .map((attachment) => {
+      const filename = attachment?.filename ?? "";
+      const mimetype = attachment?.mimetype ?? "";
+      const filesize = String(attachment?.filesize ?? 0);
+      const publicUrl = attachment?.public_url ?? "";
+      return `${filename}|${mimetype}|${filesize}|${publicUrl}`;
+    })
+    .join("::");
+
 type Attachment = File;
 
 const supabase = createClient();
@@ -87,13 +138,27 @@ export default function Chat({ user }: { user: User }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [search, setSearch] = useState("");    const [messageSearch, setMessageSearch] = useState("");  const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
+  const [search, setSearch] = useState("");
+  const [messageSearch, setMessageSearch] = useState("");
+  const [allUsers, setAllUsers] = useState<ChatUser[]>([]);
   const [badgesByUserId, setBadgesByUserId] = useState<
     Record<string, { label: string; className: string; icon?: IconDefinition }>
   >({});
+  const [unreadCountByConversationId, setUnreadCountByConversationId] = useState<
+    Record<string, number>
+  >({});
+  const [, setParticipantMetaByConversationId] = useState<
+    Record<string, ParticipantPresence>
+  >({});
+  const [lastSeenByUserId, setLastSeenByUserId] = useState<
+    Record<string, string | null>
+  >({});
+  const [presenceNow, setPresenceNow] = useState(() => Date.now());
   const badgeCacheRef = useRef<
     Record<string, { label: string; className: string; icon?: IconDefinition }>
   >({});
+  const conversationIdsRef = useRef<Set<string>>(new Set());
+  const activeConversationIdRef = useRef<string | null>(null);
   const channelRef = useRef<RealtimeChannel>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -112,10 +177,40 @@ export default function Chat({ user }: { user: User }) {
     url: string;
     filename: string;
   } | null>(null);
+  const lastReadSyncAtRef = useRef<Record<string, number>>({});
+  const [typingByConversationId, setTypingByConversationId] = useState<
+    Record<string, TypingState>
+  >({});
+  const typingStopTimeoutRef = useRef<Record<string, number>>({});
+  const typingExpiryTimeoutRef = useRef<Record<string, number>>({});
+  const localTypingByConversationRef = useRef<Record<string, boolean>>({});
+
+  const clearAllTypingTimers = useCallback(() => {
+    Object.values(typingStopTimeoutRef.current).forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    Object.values(typingExpiryTimeoutRef.current).forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    typingStopTimeoutRef.current = {};
+    typingExpiryTimeoutRef.current = {};
+  }, []);
+
+  useEffect(() => {
+    return clearAllTypingTimers;
+  }, [clearAllTypingTimers]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    conversationIdsRef.current = new Set(conversations.map((conv) => conv.id));
+  }, [conversations]);
+
+  useEffect(() => {
+    activeConversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   const handleDownloadMedia = async () => {
     if (!mediaViewer) return;
@@ -138,6 +233,267 @@ export default function Chat({ user }: { user: User }) {
   };
 
   const bucketName = process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || "";
+
+  const ensureGlobalConversationMembership = useCallback(async () => {
+    if (!user.id) return;
+
+    const timestamp = new Date().toISOString();
+
+    const { error: conversationError } = await supabase
+      .from("conversations")
+      .upsert(
+        {
+          id: GLOBAL_CONVERSATION_ID,
+          type: "global",
+        },
+        {
+          onConflict: "id",
+        },
+      );
+
+    if (conversationError) {
+      console.error("Failed to ensure global conversation:", conversationError);
+    }
+
+    const { error: participantError } = await supabase
+      .from("conversation_participants")
+      .upsert(
+        {
+          conversation_id: GLOBAL_CONVERSATION_ID,
+          user_id: user.id,
+          email: user.email ?? "",
+          last_seen_at: timestamp,
+          last_read_at: timestamp,
+        },
+        {
+          onConflict: "conversation_id,user_id",
+        },
+      );
+
+    if (participantError) {
+      console.error("Failed to ensure global conversation membership:", participantError);
+    }
+  }, [user.email, user.id]);
+
+  const setRemoteTypingState = useCallback(
+    (targetConversationId: string, state: TypingState | null) => {
+      const activeTimeoutId = typingExpiryTimeoutRef.current[targetConversationId];
+      if (activeTimeoutId) {
+        window.clearTimeout(activeTimeoutId);
+        delete typingExpiryTimeoutRef.current[targetConversationId];
+      }
+
+      if (!state) {
+        setTypingByConversationId((prev) => {
+          if (!prev[targetConversationId]) return prev;
+          const next = { ...prev };
+          delete next[targetConversationId];
+          return next;
+        });
+        return;
+      }
+
+      setTypingByConversationId((prev) => ({
+        ...prev,
+        [targetConversationId]: state,
+      }));
+
+      typingExpiryTimeoutRef.current[targetConversationId] = window.setTimeout(() => {
+        setTypingByConversationId((prev) => {
+          if (!prev[targetConversationId]) return prev;
+          const next = { ...prev };
+          delete next[targetConversationId];
+          return next;
+        });
+      }, TYPING_REMOTE_EXPIRE_MS);
+    },
+    [],
+  );
+
+  const emitTypingState = useCallback(
+    (targetConversationId: string, isTyping: boolean) => {
+      if (!targetConversationId) return;
+      const channel = channelRef.current;
+      if (!channel) return;
+
+      void channel.send({
+        type: "broadcast",
+        event: "typing",
+        payload: {
+          conversation_id: targetConversationId,
+          user_id: user.id,
+          email: user.email ?? "",
+          is_typing: isTyping,
+        },
+      });
+    },
+    [user.email, user.id],
+  );
+
+  const stopTyping = useCallback(
+    (targetConversationId: string) => {
+      if (!targetConversationId) return;
+
+      const activeTimeoutId = typingStopTimeoutRef.current[targetConversationId];
+      if (activeTimeoutId) {
+        window.clearTimeout(activeTimeoutId);
+        delete typingStopTimeoutRef.current[targetConversationId];
+      }
+
+      if (!localTypingByConversationRef.current[targetConversationId]) return;
+
+      localTypingByConversationRef.current[targetConversationId] = false;
+      emitTypingState(targetConversationId, false);
+    },
+    [emitTypingState],
+  );
+
+  const markTypingFromInput = useCallback(
+    (targetConversationId: string, nextValue: string) => {
+      if (!targetConversationId) return;
+
+      const hasText = nextValue.trim().length > 0;
+      if (!hasText) {
+        stopTyping(targetConversationId);
+        return;
+      }
+
+      if (!localTypingByConversationRef.current[targetConversationId]) {
+        localTypingByConversationRef.current[targetConversationId] = true;
+        emitTypingState(targetConversationId, true);
+      }
+
+      const activeTimeoutId = typingStopTimeoutRef.current[targetConversationId];
+      if (activeTimeoutId) {
+        window.clearTimeout(activeTimeoutId);
+      }
+
+      typingStopTimeoutRef.current[targetConversationId] = window.setTimeout(() => {
+        stopTyping(targetConversationId);
+      }, TYPING_INACTIVE_TIMEOUT_MS);
+    },
+    [emitTypingState, stopTyping],
+  );
+
+  const fetchUnreadCountsForConversations = useCallback(
+    async (
+      targetConversationIds: string[],
+      readMap: Record<string, string | null>,
+      mode: "replace" | "merge" = "replace",
+    ) => {
+      if (targetConversationIds.length === 0) {
+        if (mode === "replace") {
+          setUnreadCountByConversationId({});
+        }
+        return;
+      }
+
+      const countEntries = await Promise.all(
+        targetConversationIds.map(async (targetConversationId) => {
+          let query = supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", targetConversationId)
+            .neq("sender_id", user.id);
+
+          const lastReadAt = readMap[targetConversationId];
+          if (lastReadAt) {
+            query = query.gt("created_at", lastReadAt);
+          }
+
+          const { count } = await query;
+          return [targetConversationId, count ?? 0] as const;
+        }),
+      );
+
+      const nextCounts = Object.fromEntries(countEntries);
+
+      setUnreadCountByConversationId((prev) =>
+        mode === "replace" ? nextCounts : { ...prev, ...nextCounts },
+      );
+    },
+    [user.id],
+  );
+
+  const markConversationAsRead = useCallback(
+    async (targetConversationId: string) => {
+      if (!targetConversationId) return;
+
+      const timestamp = new Date().toISOString();
+
+      setParticipantMetaByConversationId((prev) => ({
+        ...prev,
+        [targetConversationId]: {
+          last_seen_at: timestamp,
+          last_read_at: timestamp,
+        },
+      }));
+      setUnreadCountByConversationId((prev) => ({
+        ...prev,
+        [targetConversationId]: 0,
+      }));
+
+      const now = Date.now();
+      const lastSyncAt = lastReadSyncAtRef.current[targetConversationId] ?? 0;
+      if (now - lastSyncAt < READ_RECEIPT_THROTTLE_MS) {
+        return;
+      }
+      lastReadSyncAtRef.current[targetConversationId] = now;
+
+      const { error } = await supabase
+        .from("conversation_participants")
+        .update({
+          last_seen_at: timestamp,
+          last_read_at: timestamp,
+        })
+        .eq("conversation_id", targetConversationId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Failed to mark conversation as read:", error);
+      }
+    },
+    [user.id],
+  );
+
+  const pingPresence = useCallback(async () => {
+    const timestamp = new Date().toISOString();
+
+    const { error } = await supabase
+      .from("conversation_participants")
+      .update({ last_seen_at: timestamp })
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Presence ping failed:", error);
+    }
+  }, [user.id]);
+
+  const onlineByUserId = useMemo(() => {
+    const next: Record<string, boolean> = {};
+
+    Object.entries(lastSeenByUserId).forEach(([targetUserId, lastSeenAt]) => {
+      if (!lastSeenAt) {
+        next[targetUserId] = false;
+        return;
+      }
+
+      const seenAt = new Date(lastSeenAt).getTime();
+      const ageMs = presenceNow - seenAt;
+
+      next[targetUserId] =
+        Number.isFinite(seenAt) &&
+        ageMs >= -MAX_PRESENCE_FUTURE_SKEW_MS &&
+        ageMs <= ONLINE_TIMEOUT_MS;
+    });
+
+    return next;
+  }, [lastSeenByUserId, presenceNow]);
+
+  const totalUnreadCount = useMemo(
+    () => Object.values(unreadCountByConversationId).reduce((sum, count) => sum + count, 0),
+    [unreadCountByConversationId],
+  );
 
   const globalConversations = conversations.filter((c) => c.type === "global");
   const privateConversations = conversations
@@ -247,15 +603,50 @@ export default function Chat({ user }: { user: User }) {
   }, [input]);
 
   useEffect(() => {
+    if (!user.id) return;
+
+    setPresenceNow(Date.now());
+    void pingPresence();
+
+    const intervalId = window.setInterval(() => {
+      setPresenceNow(Date.now());
+      if (document.visibilityState === "visible") {
+        void pingPresence();
+      }
+    }, PRESENCE_HEARTBEAT_MS);
+
+    const handleForeground = () => {
+      setPresenceNow(Date.now());
+      if (document.visibilityState === "visible") {
+        void pingPresence();
+      }
+    };
+
+    window.addEventListener("focus", handleForeground);
+    document.addEventListener("visibilitychange", handleForeground);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleForeground);
+      document.removeEventListener("visibilitychange", handleForeground);
+    };
+  }, [pingPresence, user.id]);
+
+  useEffect(() => {
     const fetchConversations = async () => {
+      await ensureGlobalConversationMembership();
+
       const { data } = await supabase
         .from("conversation_participants")
         .select(
           `
+          conversation_id,
+          last_read_at,
+          last_seen_at,
           conversation: conversations(
             id,
             created_at,
-            users: conversation_participants!inner(user_id, email),
+            users: conversation_participants!inner(user_id, email, last_seen_at),
             type
           )
           `,
@@ -263,97 +654,314 @@ export default function Chat({ user }: { user: User }) {
         .eq("user_id", user.id);
 
       if (data) {
-        const convs: Conversation[] = (data ?? []).map((row) => {
+        const participantRows =
+          (data as ConversationParticipantWithConversationRow[]) ?? [];
+        const convs: Conversation[] = [];
+        const nextParticipantMeta: Record<string, ParticipantPresence> = {};
+        const nextLastSeenByUserId: Record<string, string | null> = {};
+        const readMap: Record<string, string | null> = {};
+
+        participantRows.forEach((row) => {
           const convo = Array.isArray(row.conversation)
             ? row.conversation[0]
             : row.conversation;
 
-          return {
+          if (!convo) return;
+
+          convs.push({
             id: convo.id,
             created_at: convo.created_at,
-            users: convo.users.map((u: { user_id: string; email: string }) => ({
+            users: convo.users.map((u: ConversationUserRow) => ({
               id: u.user_id,
-              email: u.email,
+              email: u.email ?? "",
             })),
             type: convo.type,
+          });
+
+          nextParticipantMeta[row.conversation_id] = {
+            last_seen_at: row.last_seen_at ?? null,
+            last_read_at: row.last_read_at ?? null,
           };
+          readMap[row.conversation_id] = row.last_read_at ?? null;
+
+          convo.users.forEach((participant) => {
+            if (!participant.user_id || participant.user_id === user.id) return;
+
+            const previous = nextLastSeenByUserId[participant.user_id];
+            const incoming = participant.last_seen_at ?? null;
+
+            if (!previous) {
+              nextLastSeenByUserId[participant.user_id] = incoming;
+              return;
+            }
+
+            if (!incoming) return;
+
+            if (new Date(incoming).getTime() > new Date(previous).getTime()) {
+              nextLastSeenByUserId[participant.user_id] = incoming;
+            }
+          });
         });
 
         const sortedConvs = convs.sort((a, b) =>
           a.type === "global" ? -1 : b.type === "global" ? 1 : 0,
         );
         setConversations(sortedConvs);
+        setParticipantMetaByConversationId(nextParticipantMeta);
+        setLastSeenByUserId(nextLastSeenByUserId);
+        void fetchUnreadCountsForConversations(
+          sortedConvs.map((conv) => conv.id),
+          readMap,
+          "replace",
+        );
       }
     };
-    fetchConversations();
-  }, [user.id]);
+
+    void fetchConversations();
+  }, [ensureGlobalConversationMembership, fetchUnreadCountsForConversations, user.id]);
 
   useEffect(() => {
     if (!user.id) return;
 
     const channel = supabase
-      .channel(`conversations-user-${user.id}`)
+      .channel(`conversation-membership-${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "conversation_participants",
+          filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          const row = payload.new;
-          if (row.user_id === user.id) return;
+        async (payload) => {
+          const row = payload.new as {
+            conversation_id: string;
+            last_seen_at: string | null;
+            last_read_at: string | null;
+          };
 
-          supabase
+          const { data } = await supabase
             .from("conversations")
             .select(
               `
                 id,
-                users:conversation_participants!inner(user_id),
-                type
+                created_at,
+                type,
+                users:conversation_participants!inner(user_id, email, last_seen_at)
               `,
             )
             .eq("id", row.conversation_id)
-            .then(({ data }) => {
-              if (!data || data.length === 0) return;
-              const convo = data[0];
-              if (
-                !convo.users.some(
-                  (u: { user_id: string }) => u.user_id === user.id,
-                )
-              )
-                return;
-              if (conversations.some((c) => c.id === convo.id)) return;
+            .single();
 
-              setConversations((prev) => [
-                ...prev,
-                {
-                  id: convo.id,
-                  users: convo.users.map((u) => ({
-                    id: u.user_id,
-                    email: row.email,
-                  })),
-                  type: convo.type,
-                },
-              ]);
+          if (!data) return;
+
+          const convo = data as ConversationRowWithParticipants;
+
+          const nextConversation: Conversation = {
+            id: convo.id,
+            created_at: convo.created_at,
+            users: convo.users.map((participant) => ({
+              id: participant.user_id,
+              email: participant.email ?? "",
+            })),
+            type: convo.type,
+          };
+
+          setConversations((prev) => {
+            if (prev.some((existing) => existing.id === nextConversation.id)) {
+              return prev;
+            }
+
+            return [...prev, nextConversation].sort((a, b) =>
+              a.type === "global" ? -1 : b.type === "global" ? 1 : 0,
+            );
+          });
+
+          setParticipantMetaByConversationId((prev) => ({
+            ...prev,
+            [row.conversation_id]: {
+              last_seen_at: row.last_seen_at ?? null,
+              last_read_at: row.last_read_at ?? null,
+            },
+          }));
+
+          convo.users.forEach((participant) => {
+            if (participant.user_id === user.id) return;
+
+            setLastSeenByUserId((prev) => {
+              const previous = prev[participant.user_id];
+              const incoming = participant.last_seen_at ?? null;
+
+              if (!previous) {
+                return { ...prev, [participant.user_id]: incoming };
+              }
+
+              if (!incoming) {
+                return prev;
+              }
+
+              if (new Date(incoming).getTime() > new Date(previous).getTime()) {
+                return { ...prev, [participant.user_id]: incoming };
+              }
+
+              return prev;
             });
+          });
+
+          void fetchUnreadCountsForConversations(
+            [row.conversation_id],
+            { [row.conversation_id]: row.last_read_at ?? null },
+            "merge",
+          );
         },
       )
       .subscribe();
+
     return () => {
       channel.unsubscribe();
     };
-  }, [user.id, conversations]);
+  }, [fetchUnreadCountsForConversations, user.id]);
 
   useEffect(() => {
-    if (!conversationId) return;
+    if (!user.id) return;
+
+    const channel = supabase
+      .channel(`conversation-participant-updates-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversation_participants",
+        },
+        (payload) => {
+          const row = payload.new as {
+            conversation_id: string;
+            user_id: string;
+            last_seen_at: string | null;
+            last_read_at: string | null;
+          };
+
+          if (!conversationIdsRef.current.has(row.conversation_id)) return;
+
+          if (row.user_id === user.id) {
+            setParticipantMetaByConversationId((prev) => ({
+              ...prev,
+              [row.conversation_id]: {
+                last_seen_at: row.last_seen_at ?? null,
+                last_read_at: row.last_read_at ?? null,
+              },
+            }));
+
+            return;
+          }
+
+          setLastSeenByUserId((prev) => {
+            const previous = prev[row.user_id];
+            const incoming = row.last_seen_at ?? null;
+
+            if (!previous) {
+              return { ...prev, [row.user_id]: incoming };
+            }
+
+            if (!incoming) {
+              return prev;
+            }
+
+            if (new Date(incoming).getTime() > new Date(previous).getTime()) {
+              return { ...prev, [row.user_id]: incoming };
+            }
+
+            return prev;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user.id]);
+
+  useEffect(() => {
+    if (!user.id) return;
+
+    const channel = supabase
+      .channel(`message-unread-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const message = payload.new as Message;
+
+          if (!conversationIdsRef.current.has(message.conversation_id)) return;
+          if (message.sender_id === user.id) return;
+
+          if (activeConversationIdRef.current === message.conversation_id) {
+            void markConversationAsRead(message.conversation_id);
+            return;
+          }
+
+          setUnreadCountByConversationId((prev) => ({
+            ...prev,
+            [message.conversation_id]: (prev[message.conversation_id] ?? 0) + 1,
+          }));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [markConversationAsRead, user.id]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
 
     if (channelRef.current) {
       channelRef.current.unsubscribe();
     }
 
+    void markConversationAsRead(conversationId);
+
     const channel = supabase
       .channel(`conversation-${conversationId}`)
+      .on(
+        "broadcast",
+        {
+          event: "typing",
+        },
+        ({ payload }) => {
+          const typingPayload = payload as {
+            conversation_id?: string;
+            user_id?: string;
+            email?: string | null;
+            is_typing?: boolean;
+          };
+
+          if (typingPayload.conversation_id !== conversationId) return;
+          if (!typingPayload.user_id || typingPayload.user_id === user.id) return;
+
+          if (typingPayload.is_typing) {
+            setRemoteTypingState(conversationId, {
+              user_id: typingPayload.user_id,
+              label:
+                typingPayload.email?.split("@")[0] ||
+                "Someone",
+            });
+            return;
+          }
+
+          setRemoteTypingState(conversationId, null);
+        },
+      )
       .on(
         "postgres_changes",
         {
@@ -363,17 +971,51 @@ export default function Chat({ user }: { user: User }) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: payload.new.id,
-              conversation_id: payload.new.conversation_id,
-              sender_id: payload.new.sender_id,
-              text: payload.new.text,
-              attachments: payload.new.attachments,
-              created_at: payload.new.created_at,
-            },
-          ]);
+          const incomingMessage: Message = {
+            id: payload.new.id,
+            conversation_id: payload.new.conversation_id,
+            sender_id: payload.new.sender_id,
+            text: payload.new.text,
+            attachments: payload.new.attachments ?? [],
+            created_at: payload.new.created_at,
+          };
+
+          setMessages((prev) => {
+            if (prev.some((message) => message.id === incomingMessage.id)) {
+              return prev;
+            }
+
+            const incomingFingerprint = getAttachmentFingerprint(
+              incomingMessage.attachments,
+            );
+
+            const optimisticMessageIndex = prev.findIndex((message) => {
+              if (!message.id.startsWith("temp-")) return false;
+              if (message.sender_id !== incomingMessage.sender_id) return false;
+              if (message.conversation_id !== incomingMessage.conversation_id) {
+                return false;
+              }
+              if (message.text !== incomingMessage.text) return false;
+
+              return (
+                getAttachmentFingerprint(message.attachments) ===
+                incomingFingerprint
+              );
+            });
+
+            if (optimisticMessageIndex === -1) {
+              return [...prev, incomingMessage];
+            }
+
+            const next = [...prev];
+            next[optimisticMessageIndex] = incomingMessage;
+            return next;
+          });
+
+          if (payload.new.sender_id !== user.id) {
+            void markConversationAsRead(conversationId);
+          }
+
           setTimeout(() => {
             bottomRef.current?.scrollIntoView({ behavior: "smooth" });
           }, 100);
@@ -391,18 +1033,21 @@ export default function Chat({ user }: { user: User }) {
         .order("created_at", { ascending: true });
       if (data) {
         setMessages(data as Message[]);
+        void markConversationAsRead(conversationId);
         setTimeout(() => {
           bottomRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
       }
     };
 
-    fetchMessages();
+    void fetchMessages();
 
     return () => {
+      stopTyping(conversationId);
+      setRemoteTypingState(conversationId, null);
       channel.unsubscribe();
     };
-  }, [conversationId]);
+  }, [conversationId, markConversationAsRead, setRemoteTypingState, stopTyping, user.id]);
 
   useEffect(() => {
     if (!showModal) return;
@@ -447,7 +1092,7 @@ export default function Chat({ user }: { user: User }) {
     setIsDraggingOver(true);
   };
 
-  const onDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  const onDragLeave = () => {
     setIsDraggingOver(false);
   };
 
@@ -486,24 +1131,53 @@ export default function Chat({ user }: { user: User }) {
     if (creatingRef.current) return;
     creatingRef.current = true;
 
-    const existing = conversations.find((conv) =>
-      conv.users.some((u) => u.id === otherUser.user_id),
-    );
+/**
+ * Dear DevPulse Team,
+ * 
+ * I think I broke something but but but let’s pretend it’s a “feature update.”
+ *
+ * This update improves chat behavior, unread counters, typing indicators, online status accuracy,
+ * profile-to-DM shortcuts, and overall message flow stability.
+ * Also gave the UI a small glow-up.
+ * 
+ * Honest release note: there are many bugs.
+ * Some are known, some are unknown, and some are pretending to be features.
+ *
+ * Good luck, and may production be slightly stable.
+ *
+ * - Pat
+ */
+ 
+    const existing = conversations.find((conv) => {
+      if (conv.type === "global") return false;
+
+      const participantIds = new Set(conv.users.map((u) => u.id));
+      return (
+        participantIds.size === 2 &&
+        participantIds.has(user.id) &&
+        participantIds.has(otherUser.user_id)
+      );
+    });
     if (existing) {
       setConversationId(existing.id);
       setShowModal(false);
+      creatingRef.current = false;
       return;
     }
 
     const { data: convData } = await supabase
       .from("conversations")
-      .insert({})
+      .insert({ type: "private" })
       .select("*")
       .single();
 
-    if (!convData) return;
+    if (!convData) {
+      creatingRef.current = false;
+      return;
+    }
 
     const convId = convData.id;
+    const timestamp = new Date().toISOString();
 
     await supabase.from("conversation_participants").upsert(
       [
@@ -511,15 +1185,20 @@ export default function Chat({ user }: { user: User }) {
           conversation_id: convId,
           user_id: user.id,
           email: user.email,
+          last_seen_at: timestamp,
+          last_read_at: timestamp,
         },
         {
           conversation_id: convId,
           user_id: otherUser.user_id,
           email: otherUser.email,
+          last_seen_at: PRESENCE_UNSEEN_AT_ISO,
+          last_read_at: PRESENCE_UNSEEN_AT_ISO,
         },
       ],
       {
         onConflict: "conversation_id,user_id",
+        ignoreDuplicates: true,
       },
     );
 
@@ -528,6 +1207,7 @@ export default function Chat({ user }: { user: User }) {
       ...prev,
       {
         id: convId,
+        created_at: convData.created_at,
         users: [
           { id: user.id, email: user.email ?? "" },
           { id: otherUser.user_id, email: otherUser.email ?? "" },
@@ -535,9 +1215,30 @@ export default function Chat({ user }: { user: User }) {
         type: "private",
       },
     ]);
+    setUnreadCountByConversationId((prev) => ({ ...prev, [convId]: 0 }));
+    setParticipantMetaByConversationId((prev) => ({
+      ...prev,
+      [convId]: {
+        last_seen_at: timestamp,
+        last_read_at: timestamp,
+      },
+    }));
 
     setShowModal(false);
     creatingRef.current = false;
+  };
+
+  const openPrivateChatFromGlobalProfile = (
+    targetUserId: string,
+    targetEmail: string,
+  ) => {
+    if (!targetUserId || targetUserId === user.id) return;
+    if (!targetEmail) {
+      toast.info("Cannot start a private chat without user email.");
+      return;
+    }
+
+    void createConversation({ user_id: targetUserId, email: targetEmail });
   };
 
   const handleDeleteConversation = async () => {
@@ -546,6 +1247,16 @@ export default function Chat({ user }: { user: User }) {
       const { error } = await supabase.from("conversations").delete().eq("id", conversationId);
       if (error) throw error;
       setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setUnreadCountByConversationId((prev) => {
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
+      setParticipantMetaByConversationId((prev) => {
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
       setConversationId(null);
       setShowRightSidebar(false);
       toast.success("Conversation deleted");
@@ -557,6 +1268,10 @@ export default function Chat({ user }: { user: User }) {
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || !conversationId) return;
+
+    const targetConversationId = conversationId;
+    const originalText = input;
+    const outgoingText = sanitizeInput(input.slice(0, 1000));
 
     try {
       const uploadedAttachments = await Promise.all(
@@ -594,37 +1309,92 @@ export default function Chat({ user }: { user: User }) {
         }),
       );
 
-      const validAttachments = uploadedAttachments.filter(Boolean);
+      const validAttachments = uploadedAttachments.filter(
+        (attachment): attachment is Message["attachments"][number] =>
+          attachment !== null,
+      );
 
-      await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        text: sanitizeInput(input.slice(0, 1000)),
-        attachments: validAttachments,
-      });
+      if (!outgoingText.trim() && validAttachments.length === 0) {
+        setAttachments([]);
+        return;
+      }
+
+      const optimisticMessageId = `temp-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: optimisticMessageId,
+          conversation_id: targetConversationId,
+          sender_id: user.id,
+          text: outgoingText,
+          attachments: validAttachments,
+          created_at: new Date().toISOString(),
+          optimistic: true,
+        },
+      ]);
+
+      setInput("");
+      setAttachments([]);
+      stopTyping(targetConversationId);
 
       setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
 
-      setInput("");
-      setAttachments([]);
+      const { error: insertError } = await supabase.from("messages").insert({
+        conversation_id: targetConversationId,
+        sender_id: user.id,
+        text: outgoingText,
+        attachments: validAttachments,
+      });
+
+      if (insertError) {
+        setMessages((prev) =>
+          prev.filter((message) => message.id !== optimisticMessageId),
+        );
+        setInput(originalText);
+        setAttachments(attachments);
+        throw insertError;
+      }
+
+      void markConversationAsRead(targetConversationId);
     } catch (err) {
       console.error("Send message error:", err);
+      toast.error("Failed to send message. Please try again.");
     }
   };
 
   const activeConversation = conversations.find((c) => c.id === conversationId);
   const activeOtherUser = activeConversation?.users.find((u) => u.id !== user.id);
   const isGlobalActive = activeConversation?.type === "global";
+  const activeOtherUserOnline =
+    !!activeOtherUser?.id && !!onlineByUserId[activeOtherUser.id];
+  const activeTypingState = conversationId
+    ? typingByConversationId[conversationId]
+    : undefined;
   
   const activeLabel = isGlobalActive 
     ? "Global Chat" 
     : activeOtherUser?.email?.split("@")[0] || "Unknown";
   
   const activeSublabel = isGlobalActive 
-    ? "Public Channel" 
-    : "Online";
+    ? "Public Channel"
+    : activeOtherUserOnline
+      ? "Online"
+      : "Offline";
+
+  const activeSublabelClass = activeOtherUserOnline || isGlobalActive
+    ? "text-emerald-400"
+    : "text-gray-500";
+
+  const typingIndicatorText = activeTypingState
+    ? isGlobalActive
+      ? `${activeTypingState.label} is typing...`
+      : "Typing..."
+    : "";
 
   const activeInitials = isGlobalActive 
     ? "G" 
@@ -743,8 +1513,13 @@ export default function Chat({ user }: { user: User }) {
       <div className={`w-full md:w-[300px] flex-shrink-0 border-r border-white/5 flex flex-col bg-[#0a0a1a] md:bg-transparent z-20 absolute md:relative h-full transition-transform duration-300 ${conversationId ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}`}>
         <div className="p-5 border-b border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-gray-100 tracking-tight">Message category</h2>
+              {totalUnreadCount > 0 && (
+                <span className="min-w-[24px] h-6 px-2 rounded-full bg-rose-500/90 text-white text-[11px] font-bold flex items-center justify-center">
+                  {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
+                </span>
+              )}
             </div>
             <button
               onClick={() => setShowModal(true)}
@@ -775,6 +1550,9 @@ export default function Chat({ user }: { user: User }) {
               user={user}
               conversationId={conversationId}
               setConversationId={setConversationId}
+              unreadCountByConversationId={unreadCountByConversationId}
+              onlineByUserId={onlineByUserId}
+              typingByConversationId={typingByConversationId}
               showLabel={true}
             />
           </div>
@@ -829,6 +1607,9 @@ export default function Chat({ user }: { user: User }) {
               user={user}
               conversationId={conversationId}
               setConversationId={setConversationId}
+              unreadCountByConversationId={unreadCountByConversationId}
+              onlineByUserId={onlineByUserId}
+              typingByConversationId={typingByConversationId}
               showLabel={true}
             />
           </div>
@@ -852,11 +1633,13 @@ export default function Chat({ user }: { user: User }) {
                   <div className={`flex justify-center items-center w-11 h-11 rounded-full text-[16px] font-bold shadow-sm ${isGlobalActive ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" : "bg-neutral-800 text-gray-200 border border-white/10"}`}>
                     {activeInitials}
                   </div>
-                  <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-400 border-[2px] border-transparent rounded-full"></div>
+                  {!isGlobalActive && activeOtherUserOnline && (
+                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-400 border-[2px] border-transparent rounded-full"></div>
+                  )}
                 </div>
                 <div>
                   <h2 className="text-[16px] font-bold text-gray-100 leading-tight">{activeLabel}</h2>
-                  <p className="text-xs text-emerald-400 font-medium">{activeSublabel}</p>
+                  <p className={`text-xs font-medium ${activeSublabelClass}`}>{activeSublabel}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -879,8 +1662,22 @@ export default function Chat({ user }: { user: User }) {
                 conversations={conversations}
                 bottomRef={bottomRef}
                 badgesByUserId={badgesByUserId}
+                onUserProfileClick={openPrivateChatFromGlobalProfile}
               />
             </div>
+
+            {activeTypingState && (
+              <div className="px-4 pb-1.5">
+                <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 text-[12px] text-indigo-300">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-pulse [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-pulse [animation-delay:300ms]" />
+                  </div>
+                  <span className="font-medium">{typingIndicatorText}</span>
+                </div>
+              </div>
+            )}
 
             {/* Input Area */}
             <div className="p-4 border-t border-white/5 bg-white/[0.01] z-10 flex-shrink-0 pb-6 w-full">
@@ -947,7 +1744,13 @@ export default function Chat({ user }: { user: User }) {
                   <textarea
                     ref={textareaRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value.slice(0, 1000))}
+                    onChange={(e) => {
+                      const nextValue = e.target.value.slice(0, 1000);
+                      setInput(nextValue);
+                      if (conversationId) {
+                        markTypingFromInput(conversationId, nextValue);
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();

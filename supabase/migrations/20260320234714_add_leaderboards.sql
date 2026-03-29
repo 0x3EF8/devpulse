@@ -9,9 +9,7 @@ create table public.leaderboards (
   join_code text not null unique,
   created_at timestamptz NOT NULL default now()
 );
-
 alter table public.leaderboards enable row level security;
-
 /* ---- Leaderboards Members ----- */
 create table public.leaderboard_members (
   id uuid primary key default gen_random_uuid(),
@@ -21,9 +19,7 @@ create table public.leaderboard_members (
   joined_at timestamptz NOT NULL default now(),
   unique (leaderboard_id, user_id)
 );
-
 alter table public.leaderboard_members enable row level security;
-
 /* ---- Leaderboards Members View ----- */
 create view public.leaderboard_members_view as
 select
@@ -39,39 +35,32 @@ select
 from public.leaderboard_members lm
 join auth.users u on lm.user_id = u.id
 left join public.user_stats us on lm.user_id = us.user_id;
-
 /* ---- RLS Policies ----- */
 create policy "Public leaderboards are viewable"
 on public.leaderboards
 for select
 using (is_public = true OR owner_id = auth.uid());
-
 create policy "Users can create leaderboards"
 on public.leaderboards
 for insert
 with check (auth.uid() = owner_id);
-
 create policy "Owner can update leaderboard"
 on public.leaderboards
 for update
 using (auth.uid() = owner_id);
-
 /* ---- Members Policies ----- */
 create policy "Users can see their own membership"
 on public.leaderboard_members
 for select
 using (user_id = auth.uid());
-
 create policy "Users can join leaderboard"
 on public.leaderboard_members
 for insert
 with check (auth.uid() = user_id);
-
 create policy "Members can leave leaderboard"
 on public.leaderboard_members
 for delete
 using (user_id = auth.uid());
-
 create policy "Owner can manage members"
 on public.leaderboard_members
 for delete

@@ -10,20 +10,16 @@ create table public.user_flexes (
   open_source_url text NOT NULL default '',
   created_at timestamp with time zone NOT NULL default now()
 );
-
 alter table public.user_flexes enable row level security;
-
 /* ---- RLS Policy ----- */
 create policy "Public Access" on public.user_flexes
 for select
 using (true);
-
 create policy "User Flexes" on public.user_flexes
 for all
 to authenticated
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
-
 create or replace function flex_project(p_user_id uuid, p_project jsonb)
 returns text as $$
 begin
