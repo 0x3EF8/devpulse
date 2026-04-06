@@ -268,28 +268,36 @@ export default function Chat({ user }: { user: User }) {
     [unreadCountByConversationId],
   );
 
-  const globalConversations = conversations.filter((c) => c.type === "global");
-  const privateConversations = conversations
-    .filter((c) => c.type !== "global")
-    .sort((a, b) => {
-      if (dmSortOrder === "newest") {
-        return (b.created_at ? new Date(b.created_at).getTime() : 0) - (a.created_at ? new Date(a.created_at).getTime() : 0);
-      }
-      if (dmSortOrder === "oldest") {
-        return (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0);
-      }
-      
-      const aName = a.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
-      const bName = b.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
-      
-      if (dmSortOrder === "az") {
-        return aName.localeCompare(bName);
-      }
-      if (dmSortOrder === "za") {
-        return bName.localeCompare(aName);
-      }
-      return 0;
-    });
+  const globalConversations = useMemo(() => conversations.filter((c) => c.type === "global"), [conversations]);
+  const privateConversations = useMemo(() => {
+    return conversations
+      .filter((c) => c.type !== "global")
+      .sort((a, b) => {
+        if (dmSortOrder === "newest") {
+          return (b.created_at ? new Date(b.created_at).getTime() : 0) - (a.created_at ? new Date(a.created_at).getTime() : 0);
+        }
+        if (dmSortOrder === "oldest") {
+          return (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0);
+        }
+
+        const aName = a.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
+        const bName = b.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
+
+        if (dmSortOrder === "az") {
+          return aName.localeCompare(bName);
+        }
+        if (dmSortOrder === "za") {
+          return bName.localeCompare(aName);
+        }
+        return 0;
+      });
+  }, [conversations, dmSortOrder, user.id]);
+
+  const filteredMessages = useMemo(() => {
+    if (!messageSearch) return messages;
+    const searchLower = messageSearch.toLowerCase();
+    return messages.filter((m) => (m.text || "").toLowerCase().includes(searchLower));
+  }, [messages, messageSearch]);
 
   const activeConversation = conversations.find((c) => c.id === conversationId);
   const activeOtherUser = activeConversation?.users.find((u) => u.id !== user.id);
@@ -489,9 +497,7 @@ export default function Chat({ user }: { user: User }) {
 
             <div className="flex-1 flex flex-col overflow-hidden z-10 min-h-0">
               <Messages
-                messages={messages.filter((m) =>
-                  (m.text || "").toLowerCase().includes(messageSearch.toLowerCase())
-                )}
+                messages={filteredMessages}
                 user={user}
                 conversations={conversations}
                 bottomRef={bottomRef}
