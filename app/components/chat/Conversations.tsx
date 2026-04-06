@@ -1,7 +1,8 @@
+import React from "react";
 import { User } from "@supabase/supabase-js";
 import { Conversation, TypingState } from "../Chat";
 
-export default function Conversations({
+const Conversations = React.memo(function Conversations({
   conversations,
   user,
   conversationId,
@@ -114,5 +115,7 @@ export default function Conversations({
       })}
     </div>
   );
-}
+});
+
+export default Conversations;
 

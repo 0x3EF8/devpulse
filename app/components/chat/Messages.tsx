@@ -7,7 +7,7 @@ import { atomDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { Conversation, Message } from "../Chat";
 import { timeAgo } from "@/app/utils/time";
 import { type BadgeInfo, getBadgeInfoFromHours } from "@/app/utils/badge";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   faFile,
@@ -17,7 +17,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import MediaViewerModal, { type MediaViewerPayload } from "./MediaViewerModal";
 
-export default function Messages({
+const Messages = React.memo(function Messages({
   messages,
   user,
   conversations,
@@ -267,7 +267,9 @@ export default function Messages({
       </div>
     </>
   );
-}
+});
+
+export default Messages;
 
 function CodeBlock({
   code,
