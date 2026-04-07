@@ -334,6 +334,15 @@ export default function Chat({ user }: { user: User }) {
       .reverse();
   }, [messages]);
 
+  // Performance optimization: Memoize the filtered messages to avoid O(N) string manipulation on every keystroke
+  // when typing a message (which triggers a re-render of Chat.tsx). This significantly improves typing latency
+  // in conversations with many messages.
+  const filteredMessages = useMemo(() => {
+    if (!messageSearch) return messages;
+    const lowerSearch = messageSearch.toLowerCase();
+    return messages.filter((m) => (m.text || "").toLowerCase().includes(lowerSearch));
+  }, [messages, messageSearch]);
+
   return (
     <>
       <MediaViewerModal
@@ -489,9 +498,7 @@ export default function Chat({ user }: { user: User }) {
 
             <div className="flex-1 flex flex-col overflow-hidden z-10 min-h-0">
               <Messages
-                messages={messages.filter((m) =>
-                  (m.text || "").toLowerCase().includes(messageSearch.toLowerCase())
-                )}
+                messages={filteredMessages}
                 user={user}
                 conversations={conversations}
                 bottomRef={bottomRef}
