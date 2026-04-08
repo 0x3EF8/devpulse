@@ -268,30 +268,41 @@ export default function Chat({ user }: { user: User }) {
   const canSendMessage =
     !isSendingMessage && (input.trim().length > 0 || attachments.length > 0);
 
-  const globalConversations = conversations.filter((c) => c.type === "global");
-  const privateConversations = conversations
-    .filter((c) => c.type !== "global")
-    .sort((a, b) => {
-      if (dmSortOrder === "newest") {
-        return (b.created_at ? new Date(b.created_at).getTime() : 0) - (a.created_at ? new Date(a.created_at).getTime() : 0);
-      }
-      if (dmSortOrder === "oldest") {
-        return (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0);
-      }
-      
-      const aName = a.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
-      const bName = b.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
-      
-      if (dmSortOrder === "az") {
-        return aName.localeCompare(bName);
-      }
-      if (dmSortOrder === "za") {
-        return bName.localeCompare(aName);
-      }
-      return 0;
-    });
+  // Performance optimization: Memoize derived conversation lists to prevent sorting and filtering
+  // on every render (e.g., when the user types a message or presence updates occur).
+  const globalConversations = useMemo(
+    () => conversations.filter((c) => c.type === "global"),
+    [conversations]
+  );
 
-  const activeConversation = conversations.find((c) => c.id === conversationId);
+  const privateConversations = useMemo(() => {
+    return conversations
+      .filter((c) => c.type !== "global")
+      .sort((a, b) => {
+        if (dmSortOrder === "newest") {
+          return (b.created_at ? new Date(b.created_at).getTime() : 0) - (a.created_at ? new Date(a.created_at).getTime() : 0);
+        }
+        if (dmSortOrder === "oldest") {
+          return (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0);
+        }
+
+        const aName = a.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
+        const bName = b.users.find((u) => u.id !== user.id)?.email?.split("@")[0] || "";
+
+        if (dmSortOrder === "az") {
+          return aName.localeCompare(bName);
+        }
+        if (dmSortOrder === "za") {
+          return bName.localeCompare(aName);
+        }
+        return 0;
+      });
+  }, [conversations, dmSortOrder, user.id]);
+
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === conversationId),
+    [conversations, conversationId]
+  );
   const activeOtherUser = activeConversation?.users.find((u) => u.id !== user.id);
   const isGlobalActive = activeConversation?.type === "global";
   const activeOtherUserOnline =
