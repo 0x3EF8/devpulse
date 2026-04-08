@@ -120,25 +120,26 @@ function Sidebar({ role }: { role: string }) {
       participantRows.map((participant) => participant.conversation_id),
     );
 
-    const unreadCounts = await Promise.all(
-      participantRows.map(async (participant) => {
-        let query = supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("conversation_id", participant.conversation_id)
-          .neq("sender_id", userId);
+    if (participantRows.length === 0) {
+      setChatUnreadCount(0);
+      return;
+    }
 
-        if (participant.last_read_at) {
-          query = query.gt("created_at", participant.last_read_at);
-        }
+    // Batching count queries to prevent N+1 requests
+    const orConditions = participantRows.map(p => {
+      if (p.last_read_at) {
+        return `and(conversation_id.eq.${p.conversation_id},created_at.gt.${p.last_read_at})`;
+      }
+      return `conversation_id.eq.${p.conversation_id}`;
+    });
 
-        const { count } = await query;
-        return count ?? 0;
-      }),
-    );
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .neq("sender_id", userId)
+      .or(orConditions.join(","));
 
-    const totalUnread = unreadCounts.reduce((sum, count) => sum + count, 0);
-    setChatUnreadCount(totalUnread);
+    setChatUnreadCount(count ?? 0);
   }, []);
 
   useEffect(() => {
