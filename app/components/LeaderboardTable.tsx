@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Database } from "../supabase-types";
 import { BADGE_LEGEND_HOURS, getBadgeInfoFromHours } from "@/app/utils/badge";
@@ -119,18 +120,22 @@ export default function LeaderboardTable({
   members: NonNullableMember[];
   ownerId?: string;
 }) {
-  const ranked = members
-    .sort((a, b) => (b.total_seconds || 0) - (a.total_seconds || 0))
-    .map((member, index) => ({
-      user_id: member.user_id,
-      rank: index + 1,
-      email: member.email,
-      hours: Math.round((member.total_seconds || 0) / 3600),
-      role: member.role,
-      languages: (member.languages || []).slice(0, 3).map((l) => l.name),
-      os: member.operating_systems?.[0]?.name || "N/A",
-      editor: member.editors?.[0]?.name || "N/A",
-    }));
+  // ⚡ Bolt: Memoize the expensive sorting and mapping of the leaderboard members array
+  // Also use [...members] to avoid mutating the original prop which is a React anti-pattern
+  const ranked = useMemo(() => {
+    return [...members]
+      .sort((a, b) => (b.total_seconds || 0) - (a.total_seconds || 0))
+      .map((member, index) => ({
+        user_id: member.user_id,
+        rank: index + 1,
+        email: member.email,
+        hours: Math.round((member.total_seconds || 0) / 3600),
+        role: member.role,
+        languages: (member.languages || []).slice(0, 3).map((l) => l.name),
+        os: member.operating_systems?.[0]?.name || "N/A",
+        editor: member.editors?.[0]?.name || "N/A",
+      }));
+  }, [members]);
 
   const maxHours = ranked[0]?.hours || 1;
   const formatRank = (rank: number) => rank.toString().padStart(2, "0");
