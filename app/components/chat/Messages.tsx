@@ -8,11 +8,14 @@ import { Conversation, Message } from "../Chat";
 import { timeAgo } from "@/app/utils/time";
 import { type BadgeInfo, getBadgeInfoFromHours } from "@/app/utils/badge";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
+  faCopy,
   faFile,
   faPause,
   faPlay,
+  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import MediaViewerModal, { type MediaViewerPayload } from "./MediaViewerModal";
@@ -40,7 +43,9 @@ export default function Messages({
     null,
   );
   const [activeDesktopMenuMessageId, setActiveDesktopMenuMessageId] = useState<string | null>(null);
+  const desktopMenuOpenTimerRef = useRef<number | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
+  const desktopMenuCloseTimerRef = useRef<number | null>(null);
   const [mobileActionMenu, setMobileActionMenu] = useState<{
     messageId: string;
     text: string;
@@ -72,8 +77,20 @@ export default function Messages({
       if (longPressTimerRef.current) {
         window.clearTimeout(longPressTimerRef.current);
       }
+      if (desktopMenuOpenTimerRef.current) {
+        window.clearTimeout(desktopMenuOpenTimerRef.current);
+      }
+      if (desktopMenuCloseTimerRef.current) {
+        window.clearTimeout(desktopMenuCloseTimerRef.current);
+      }
     };
   }, []);
+
+  const visibleDesktopMenuMessageId =
+    activeDesktopMenuMessageId &&
+    messages.some((message) => message.id === activeDesktopMenuMessageId)
+      ? activeDesktopMenuMessageId
+      : null;
 
   const copyMessageText = async (messageText: string) => {
     const trimmed = (messageText || "").trim();
@@ -110,6 +127,36 @@ export default function Messages({
       longPressTimerRef.current = null;
     }, 450);
   };
+
+  const openDesktopMenu = (messageId: string) => {
+    if (desktopMenuOpenTimerRef.current) {
+      window.clearTimeout(desktopMenuOpenTimerRef.current);
+    }
+    if (desktopMenuCloseTimerRef.current) {
+      window.clearTimeout(desktopMenuCloseTimerRef.current);
+      desktopMenuCloseTimerRef.current = null;
+    }
+    // Delay open slightly for cleaner hover UX on desktop.
+    desktopMenuOpenTimerRef.current = window.setTimeout(() => {
+      setActiveDesktopMenuMessageId(messageId);
+      desktopMenuOpenTimerRef.current = null;
+    }, 180);
+  };
+
+  const closeDesktopMenu = (messageId: string) => {
+    if (desktopMenuOpenTimerRef.current) {
+      window.clearTimeout(desktopMenuOpenTimerRef.current);
+      desktopMenuOpenTimerRef.current = null;
+    }
+    if (desktopMenuCloseTimerRef.current) {
+      window.clearTimeout(desktopMenuCloseTimerRef.current);
+    }
+    // Small delay prevents accidental close while moving pointer to menu.
+    desktopMenuCloseTimerRef.current = window.setTimeout(() => {
+      setActiveDesktopMenuMessageId((prev) => (prev === messageId ? null : prev));
+      desktopMenuCloseTimerRef.current = null;
+    }, 120);
+  };
   return (
     <>
       <MediaViewerModal
@@ -122,7 +169,7 @@ export default function Messages({
         className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
         id="chat-container"
       >
-        {activeDesktopMenuMessageId && (
+        {visibleDesktopMenuMessageId && (
           <div className="hidden md:block fixed inset-0 z-10 pointer-events-none bg-black/20 backdrop-blur-[2px]" />
         )}
         {showScrollBtn && (
@@ -187,6 +234,10 @@ export default function Messages({
             !msg.text &&
             normalizedAttachments.length > 0 &&
             normalizedAttachments.every((att) => getAttachmentKind(att) === "audio");
+          const isFocusedMobileMessage =
+            mobileActionMenu?.messageId === msg.id;
+          const shouldBlurForMobileActionMenu =
+            !!mobileActionMenu && !isFocusedMobileMessage;
 
           return (
             <div
@@ -194,7 +245,13 @@ export default function Messages({
               className={`group relative flex gap-2.5 items-end transition-colors ${
                 isSelf ? "justify-end" : "justify-start"
               } ${
-                activeDesktopMenuMessageId === msg.id ? "z-20" : "z-0"
+                visibleDesktopMenuMessageId === msg.id ? "z-20" : "z-0"
+              } ${
+                shouldBlurForMobileActionMenu
+                  ? "md:blur-0 blur-[1.5px] opacity-45 scale-[0.995]"
+                  : "opacity-100 scale-100"
+              } ${
+                isFocusedMobileMessage ? "z-30" : ""
               }`}
             >
               {!isSelf && (
@@ -234,18 +291,16 @@ export default function Messages({
                     className={`hidden md:flex absolute z-20 -top-8 ${
                       isSelf ? "right-0" : "left-0"
                     } ${
-                      activeDesktopMenuMessageId === msg.id
+                      visibleDesktopMenuMessageId === msg.id
                         ? "opacity-100"
                         : "opacity-0 pointer-events-none"
                     } transition-opacity`}
                     onMouseEnter={() => {
                       if (!hasDesktopActions) return;
-                      setActiveDesktopMenuMessageId(msg.id);
+                      openDesktopMenu(msg.id);
                     }}
                     onMouseLeave={() => {
-                      setActiveDesktopMenuMessageId((prev) =>
-                        prev === msg.id ? null : prev,
-                      );
+                      closeDesktopMenu(msg.id);
                     }}
                   >
                     <div className="relative isolate flex items-center gap-1 rounded-xl border border-white/10 bg-[#0c0c1f]/95 backdrop-blur px-1.5 py-1 shadow-xl">
@@ -262,7 +317,10 @@ export default function Messages({
                       {isSelf && onUnsendMessage && (
                         <button
                           type="button"
-                          onClick={() => void onUnsendMessage(msg.id)}
+                          onClick={() => {
+                            setActiveDesktopMenuMessageId(null);
+                            void onUnsendMessage(msg.id);
+                          }}
                           className="px-2 py-1 rounded-lg text-[11px] text-red-300 hover:bg-red-500/15 transition"
                           title="Unsend message"
                         >
@@ -318,12 +376,10 @@ export default function Messages({
                   <div
                     onMouseEnter={() => {
                       if (!hasDesktopActions) return;
-                      setActiveDesktopMenuMessageId(msg.id);
+                      openDesktopMenu(msg.id);
                     }}
                     onMouseLeave={() => {
-                      setActiveDesktopMenuMessageId((prev) =>
-                        prev === msg.id ? null : prev,
-                      );
+                      closeDesktopMenu(msg.id);
                     }}
                     onTouchStart={() => queueLongPressMenu(msg.id, msg.text || "", isSelf)}
                     onTouchEnd={clearLongPress}
@@ -372,12 +428,10 @@ export default function Messages({
                   <div
                     onMouseEnter={() => {
                       if (!hasDesktopActions) return;
-                      setActiveDesktopMenuMessageId(msg.id);
+                      openDesktopMenu(msg.id);
                     }}
                     onMouseLeave={() => {
-                      setActiveDesktopMenuMessageId((prev) =>
-                        prev === msg.id ? null : prev,
-                      );
+                      closeDesktopMenu(msg.id);
                     }}
                     className={`${isVoiceOnlyMessage ? "mt-0" : "mt-1.5"} space-y-1.5`}
                   >
@@ -397,45 +451,55 @@ export default function Messages({
         <div ref={bottomRef} />
       </div>
 
-      {mobileActionMenu && (
-        <div
-          className="fixed inset-0 z-[120] bg-black/45 backdrop-blur-[2px] md:hidden flex items-end"
-          onClick={() => setMobileActionMenu(null)}
-        >
+      {mobileActionMenu &&
+        createPortal(
           <div
-            className="w-full rounded-t-2xl border-t border-white/10 bg-[#0c0c1f] p-4 pb-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            className="fixed inset-0 z-[9999] md:hidden"
+            onClick={() => setMobileActionMenu(null)}
           >
-            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
-            <div className="space-y-2">
-              {!!mobileActionMenu.text.trim() && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void copyMessageText(mobileActionMenu.text);
-                    setMobileActionMenu(null);
-                  }}
-                  className="w-full text-left rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-gray-100 font-medium"
-                >
-                  Copy
-                </button>
-              )}
-              {mobileActionMenu.isSelf && onUnsendMessage && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void onUnsendMessage(mobileActionMenu.messageId);
-                    setMobileActionMenu(null);
-                  }}
-                  className="w-full text-left rounded-xl px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-300 font-medium"
-                >
-                  Unsend
-                </button>
-              )}
+            <div className="absolute inset-0 bg-black/25" />
+            <div
+              className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-[#0c0c1f]/96 backdrop-blur-xl px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.9rem)] shadow-2xl rounded-t-[28px]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mx-auto w-full max-w-sm flex items-stretch gap-2">
+                {!!mobileActionMenu.text.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyMessageText(mobileActionMenu.text);
+                      setMobileActionMenu(null);
+                    }}
+                    className="flex-1 rounded-2xl px-2 py-2 text-gray-100 hover:bg-white/10 active:scale-[0.98] transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <FontAwesomeIcon
+                      icon={faCopy}
+                      className="w-4 h-4 text-indigo-300"
+                    />
+                    <span className="text-[12px] font-semibold leading-tight">Copy</span>
+                  </button>
+                )}
+                {mobileActionMenu.isSelf && onUnsendMessage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onUnsendMessage(mobileActionMenu.messageId);
+                      setMobileActionMenu(null);
+                    }}
+                    className="flex-1 rounded-2xl px-2 py-2 text-red-200 hover:bg-white/10 active:scale-[0.98] transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <FontAwesomeIcon
+                      icon={faTrashCan}
+                      className="w-4 h-4 text-red-300"
+                    />
+                    <span className="text-[12px] font-semibold leading-tight">Unsend</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
