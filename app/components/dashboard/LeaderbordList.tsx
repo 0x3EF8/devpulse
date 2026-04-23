@@ -31,7 +31,8 @@ export default async function LeaderboardsList() {
     supabase
       .from("leaderboard_members")
       .select("leaderboards(id, name, slug, owner_id)")
-      .eq("user_id", user.id),
+      .eq("user_id", user.id)
+      .eq("role", "member"),
   ]);
 
   const owned = ownResult.data || [];

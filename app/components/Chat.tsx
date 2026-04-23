@@ -377,7 +377,6 @@ export default function Chat({ user }: { user: User }) {
 
     toast.success("Message unsent.");
   };
-
   return (
     <>
       <MediaViewerModal

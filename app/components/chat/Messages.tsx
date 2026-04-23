@@ -110,7 +110,6 @@ export default function Messages({
       longPressTimerRef.current = null;
     }, 450);
   };
-
   return (
     <>
       <MediaViewerModal

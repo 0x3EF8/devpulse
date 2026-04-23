@@ -87,7 +87,6 @@ export default function JoinButton({
       if (existingMembership) {
         return { alreadyMember: true };
       }
-
       const { error } = await supabase.from("leaderboard_members").insert({
         leaderboard_id: board.id,
         user_id: user.id,
